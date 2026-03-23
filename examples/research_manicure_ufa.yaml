@@ -1,0 +1,42 @@
+# Пример пайплайна: полное исследование рынка маникюра в Уфе
+# Запуск: webscout pipeline examples/research_manicure_ufa.yaml
+
+name: "Маникюр Уфа — полное исследование"
+
+steps:
+  # 1. Собрать студии с Яндекс.Карт
+  - tool: org
+    command: scrape
+    source: yandex-maps
+    params:
+      query: "маникюр"
+      city: "Уфа"
+      max_results: 200
+    output: data/json/ufa_manicure.json
+
+  # 2. Дополнить из 2ГИС (дедупликация — через webscout merge)
+  - tool: org
+    command: scrape
+    source: 2gis
+    params:
+      query: "ногтевая студия"
+      city: "Уфа"
+      max_results: 200
+    output: data/json/ufa_nails_2gis.json
+
+  # 3. Найти вакансии (кто из них нанимает?)
+  - tool: jobs
+    command: enrich
+    input: data/json/ufa_manicure.json
+    source: hh
+
+  # 4. Собрать прайсы через онлайн-запись
+  - tool: prices
+    command: collect
+    input: data/json/ufa_manicure.json
+
+  # 5. Юридическая проверка
+  - tool: legal
+    command: enrich
+    input: data/json/ufa_manicure.json
+    source: egrul

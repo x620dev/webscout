@@ -723,9 +723,17 @@ output:
 > LegalScout подключён в корневой `cli.py`. Тесты: 419 проходят (51 новый).
 
 ### Фаза 6: Пайплайны и MCP
-- [ ] Команда `webscout pipeline` — запуск цепочки из YAML-файла
-- [ ] MCP-сервер со всеми инструментами
-- [ ] Документация
+- [x] Команда `webscout pipeline` — запуск цепочки из YAML-файла
+- [x] MCP-сервер со всеми инструментами
+- [x] Документация
+
+> **Выполнено.** Создан `src/pipeline.py` (загрузка/валидация YAML, трансляция шагов в CLI-аргументы,
+> последовательное выполнение через subprocess с опциями `--dry-run` и `--stop-on-error`).
+> Команда `webscout pipeline <file.yaml>` добавлена в корневой `cli.py`.
+> MCP-сервер `src/mcp_server.py` реализован через `mcp.server.fastmcp.FastMCP` с 6 инструментами:
+> `scrape_organizations`, `fetch_organization`, `search_vacancies`, `fetch_prices`,
+> `scrape_reviews`, `search_legal`. Для работы MCP требуется: `pip install 'mcp[cli]>=1.0'`.
+> Тесты: 437 проходят (18+8 новых, 8 скипаются при отсутствии mcp-пакета).
 
 ---
 

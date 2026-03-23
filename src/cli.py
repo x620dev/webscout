@@ -169,5 +169,38 @@ def merge(
     console.print(f"[green]Сохранено:[/green] {output}")
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# pipeline — запуск цепочки шагов из YAML-файла
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@app.command()
+def pipeline(
+    pipeline_file: Path = typer.Argument(help="Путь к YAML-файлу пайплайна"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Показать команды без выполнения"),
+    stop_on_error: bool = typer.Option(
+        False, "--stop-on-error", "-e", help="Остановить пайплайн при первой ошибке"
+    ),
+    config_path: Path = typer.Option(None, "--config", "-c", help="Путь к config.yaml"),
+) -> None:
+    """Запустить цепочку шагов из YAML-файла пайплайна."""
+    from src.pipeline import load_pipeline, run_pipeline
+
+    try:
+        load_pipeline(pipeline_file)
+    except (FileNotFoundError, ValueError) as exc:
+        console.print(f"[red]Ошибка:[/red] {exc}")
+        raise typer.Exit(1)
+
+    failed = run_pipeline(
+        pipeline_file,
+        dry_run=dry_run,
+        config_path=config_path,
+        stop_on_error=stop_on_error,
+    )
+    if failed:
+        raise typer.Exit(1)
+
+
 if __name__ == "__main__":
     app()
