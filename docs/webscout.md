@@ -684,11 +684,24 @@ output:
 > Тесты: 319 проходят (44 новых).
 
 ### Фаза 4: ReviewScout
-- [ ] Скрапер Яндекс.Отзывов (из карточки организации)
-- [ ] Скрапер Flamp
-- [ ] Модели Review, ReviewSummary
-- [ ] CLI: `webscout reviews scrape ...`, `webscout reviews enrich ...`
-- [ ] Тесты
+- [x] Скрапер Яндекс.Отзывов (из карточки организации)
+- [x] Скрапер Flamp
+- [x] Модели Review, ReviewSummary
+- [x] CLI: `webscout reviews scrape ...`, `webscout reviews enrich ...`
+- [x] Тесты
+
+> **Выполнено.** Созданы: `src/tools/reviewscout/models.py` (Review наследует BaseModel;
+> ReviewSummary наследует ScrapedEntity; поля rating/reviews_count/reviews),
+> `src/tools/reviewscout/scrapers/yandex_reviews.py` (Playwright, DOM-парсинг отзывов
+> из карточки организации Яндекс.Карт; `_make_reviews_url` строит URL вкладки отзывов;
+> `parse_star_rating` для числового рейтинга; автоскролл для подгрузки),
+> `src/tools/reviewscout/scrapers/flamp.py` (аналогичная структура; `parse_flamp_rating`
+> поддерживает шкалы 1–5 и 1–10; кнопка «Показать ещё» + infinite-scroll),
+> `src/tools/reviewscout/cli.py` (`webscout reviews scrape yandex/flamp`,
+> `webscout reviews enrich`). Команда `enrich`: yandex использует `source_url`
+> (совместимо с OrgScout), flamp — поле `flamp_url`; результат в `_enriched.reviews`.
+> ReviewScout подключён в корневой `cli.py`.
+> Тесты: 368 проходят (49 новых).
 
 ### Фаза 5: LegalScout
 - [ ] Скрапер ЕГРЮЛ / nalog.ru
