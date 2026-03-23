@@ -664,12 +664,24 @@ output:
 > JobScout подключён в корневой `cli.py`. Тесты: 275 проходят (45 новых).
 
 ### Фаза 3: PriceScout
-- [ ] Скрапер YCLIENTS (Playwright, извлечение прайса из виджета записи)
-- [ ] Скрапер Dikidi
-- [ ] Автоопределение CRM по домену `online_booking` в команде `collect`
-- [ ] Модели ServicePrice, PriceList
-- [ ] CLI: `webscout prices fetch ...`, `webscout prices collect ...`
-- [ ] Тесты
+- [x] Скрапер YCLIENTS (Playwright, извлечение прайса из виджета записи)
+- [x] Скрапер Dikidi
+- [x] Автоопределение CRM по домену `online_booking` в команде `collect`
+- [x] Модели ServicePrice, PriceList
+- [x] CLI: `webscout prices fetch ...`, `webscout prices collect ...`
+- [x] Тесты
+
+> **Выполнено.** Созданы: `src/tools/pricescout/models.py` (ServicePrice наследует BaseModel,
+> PriceList наследует ScrapedEntity; поля price/price_from/price_to для точных цен и диапазонов),
+> `src/tools/pricescout/scrapers/yclients.py` (Playwright, DOM-парсинг; `parse_price_text`
+> вынесена на уровень модуля для тестирования; множественные fallback-селекторы для разных
+> версий виджета YCLIENTS),
+> `src/tools/pricescout/scrapers/dikidi.py` (аналогичная структура, повторно использует
+> `parse_price_text` из yclients),
+> `src/tools/pricescout/cli.py` (`webscout prices fetch yclients/dikidi`, `webscout prices collect`).
+> Команда `collect`: CRM определяется по домену `online_booking`, результат записывается
+> в `_enriched.prices`. PriceScout подключён в корневой `cli.py`.
+> Тесты: 319 проходят (44 новых).
 
 ### Фаза 4: ReviewScout
 - [ ] Скрапер Яндекс.Отзывов (из карточки организации)

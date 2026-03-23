@@ -35,8 +35,8 @@ from src.tools.jobscout.cli import app as jobs_app  # noqa: E402
 app.add_typer(jobs_app, name="jobs")
 
 # Phase 3: PriceScout
-# from src.tools.pricescout.cli import app as prices_app
-# app.add_typer(prices_app, name="prices")
+from src.tools.pricescout.cli import app as prices_app  # noqa: E402
+app.add_typer(prices_app, name="prices")
 
 # Phase 4: ReviewScout
 # from src.tools.reviewscout.cli import app as reviews_app
