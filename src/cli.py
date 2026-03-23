@@ -27,12 +27,12 @@ console = Console()
 # Подключение инструментов (добавляются по мере реализации фаз)
 # ─────────────────────────────────────────────────────────────────────────────
 # Phase 1: OrgScout
-from src.tools.orgscout.cli import app as org_app
+from src.tools.orgscout.cli import app as org_app  # noqa: E402
 app.add_typer(org_app, name="org")
 
 # Phase 2: JobScout
-# from src.tools.jobscout.cli import app as jobs_app
-# app.add_typer(jobs_app, name="jobs")
+from src.tools.jobscout.cli import app as jobs_app  # noqa: E402
+app.add_typer(jobs_app, name="jobs")
 
 # Phase 3: PriceScout
 # from src.tools.pricescout.cli import app as prices_app

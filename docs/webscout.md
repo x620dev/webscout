@@ -644,13 +644,24 @@ output:
 > сохранён по спеке; дедупликация фильтрует по городу для снижения false-positives.
 
 ### Фаза 2: JobScout
-- [ ] Скрапер hh.ru (REST API, без Playwright)
-- [ ] Модель Vacancy
-- [ ] CLI: `webscout jobs search hh ...`
-- [ ] Команда `webscout jobs enrich` — обогащение организаций вакансиями (fuzzy matching)
-- [ ] Скрапер Avito (SPA, DOM-парсинг)
-- [ ] Тесты
+- [x] Скрапер hh.ru (REST API, без Playwright)
+- [x] Модель Vacancy
+- [x] CLI: `webscout jobs search hh ...`
+- [x] Команда `webscout jobs enrich` — обогащение организаций вакансиями (fuzzy matching)
+- [x] Скрапер Avito (SPA, DOM-парсинг)
+- [x] Тесты
 - _SuperJob отложен (требует API-ключ, см. «Только открытые источники»)_
+
+> **Выполнено.** Созданы: `src/tools/jobscout/models.py` (Vacancy наследует ScrapedEntity;
+> поля salary_from/salary_to/salary_currency, experience, employment, schedule),
+> `src/tools/jobscout/scrapers/hh.py` (публичный REST API hh.ru; маппинг 40+ городов в area_id;
+> пагинация; `parse_vacancy` вынесена на уровень модуля для тестирования),
+> `src/tools/jobscout/scrapers/avito.py` (Playwright, DOM-парсинг; `_parse_salary` разбирает
+> текстовый формат зарплат; fallback-селекторы для нестабильного DOM Avito),
+> `src/tools/jobscout/cli.py` (`webscout jobs search hh/avito`, `webscout jobs enrich`).
+> Команда `enrich`: для каждой организации ищет вакансии по имени компании на hh.ru,
+> фильтрует по fuzzy matching employer.name, добавляет в `_enriched.jobs`.
+> JobScout подключён в корневой `cli.py`. Тесты: 275 проходят (45 новых).
 
 ### Фаза 3: PriceScout
 - [ ] Скрапер YCLIENTS (Playwright, извлечение прайса из виджета записи)

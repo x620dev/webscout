@@ -10,7 +10,6 @@ from playwright.async_api import BrowserContext, Page
 
 from src.core.anti_detect import (
     detect_captcha,
-    human_scroll,
     random_delay,
     wait_for_captcha_solve,
 )
