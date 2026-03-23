@@ -704,11 +704,23 @@ output:
 > Тесты: 368 проходят (49 новых).
 
 ### Фаза 5: LegalScout
-- [ ] Скрапер ЕГРЮЛ / nalog.ru
-- [ ] Скрапер Rusprofile
-- [ ] Модель LegalEntity
-- [ ] CLI: `webscout legal search ...`, `webscout legal enrich ...`
-- [ ] Тесты
+- [x] Скрапер ЕГРЮЛ / nalog.ru
+- [x] Скрапер Rusprofile
+- [x] Модель LegalEntity
+- [x] CLI: `webscout legal search ...`, `webscout legal enrich ...`
+- [x] Тесты
+
+> **Выполнено.** Созданы: `src/tools/legalscout/models.py` (LegalEntity наследует ScrapedEntity;
+> поля inn/ogrn/registration_date/director/founders/status/main_activity/authorized_capital/employee_count),
+> `src/tools/legalscout/scrapers/egrul.py` (двухшаговый HTTP API nalog.ru: POST → токен, GET → результаты;
+> маппинг 40 городов в коды регионов ОКАТО; `parse_egrul_item` вынесена на уровень модуля для тестирования;
+> httpx напрямую без HttpClient-обёртки из-за специфики POST+GET),
+> `src/tools/legalscout/scrapers/rusprofile.py` (Playwright; парсинг карточек со страницы поиска;
+> опциональная детальная загрузка компании `fetch_details=True`; helper-функции `parse_inn_text`,
+> `parse_capital_text`),
+> `src/tools/legalscout/cli.py` (`webscout legal search egrul/rusprofile`, `webscout legal enrich`).
+> Команда `enrich`: поиск по имени+городу, fuzzy matching, запись в `_enriched.legal`.
+> LegalScout подключён в корневой `cli.py`. Тесты: 419 проходят (51 новый).
 
 ### Фаза 6: Пайплайны и MCP
 - [ ] Команда `webscout pipeline` — запуск цепочки из YAML-файла

@@ -43,8 +43,8 @@ from src.tools.reviewscout.cli import app as reviews_app  # noqa: E402
 app.add_typer(reviews_app, name="reviews")
 
 # Phase 5: LegalScout
-# from src.tools.legalscout.cli import app as legal_app
-# app.add_typer(legal_app, name="legal")
+from src.tools.legalscout.cli import app as legal_app  # noqa: E402
+app.add_typer(legal_app, name="legal")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
