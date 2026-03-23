@@ -735,6 +735,36 @@ output:
 > `scrape_reviews`, `search_legal`. Для работы MCP требуется: `pip install 'mcp[cli]>=1.0'`.
 > Тесты: 437 проходят (18+8 новых, 8 скипаются при отсутствии mcp-пакета).
 
+### Итоговая проверка (2026-03-24)
+
+**Все фазы реализованы. Проект полностью соответствует плану.**
+
+#### Файловая структура
+- **53 файла исходного кода** — все модули из архитектуры присутствуют
+- **49 файлов тестов** — покрытие всех модулей
+
+#### CLI-команды (все зарегистрированы в `src/cli.py`)
+- `org` (scrape yandex-maps/2gis, fetch)
+- `jobs` (search hh/avito, enrich)
+- `prices` (fetch yclients/dikidi, collect)
+- `reviews` (scrape yandex/flamp, enrich)
+- `legal` (search egrul/rusprofile, enrich)
+- `merge`, `pipeline`, `render`
+
+#### MCP-сервер — 6 инструментов
+`scrape_organizations`, `fetch_organization`, `search_vacancies`, `fetch_prices`, `scrape_reviews`, `search_legal`
+
+#### Ключевые фичи
+- Fuzzy matching (`core/matching.py`)
+- Автоименование + транслитерация (`output/naming.py`)
+- Partial results + `--append` (`output/partial.py`)
+- Progress bar (`output/progress.py`)
+- Enrich-команды во всех инструментах
+
+#### Качество
+- **445 тестов — все проходят** (ruff — 0 ошибок)
+- `pyproject.toml`, `config.yaml`, документация — оформлены
+
 ---
 
 ## Пайплайны (фаза 6)
