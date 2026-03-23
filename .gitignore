@@ -1,0 +1,19 @@
+# Виртуальное окружение
+venv/
+env/
+ENV/
+
+# Переменные окружения
+.env
+.env.local
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.claude/
