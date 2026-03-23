@@ -12,6 +12,7 @@ from rich.console import Console
 
 from src.core.browser import BrowserManager
 from src.core.config import load_config
+from src.core.matching import deduplicate
 from src.core.renderer import OutputFormat, PageRenderer
 
 app = typer.Typer(
@@ -26,8 +27,8 @@ console = Console()
 # Подключение инструментов (добавляются по мере реализации фаз)
 # ─────────────────────────────────────────────────────────────────────────────
 # Phase 1: OrgScout
-# from src.tools.orgscout.cli import app as org_app
-# app.add_typer(org_app, name="org")
+from src.tools.orgscout.cli import app as org_app
+app.add_typer(org_app, name="org")
 
 # Phase 2: JobScout
 # from src.tools.jobscout.cli import app as jobs_app
@@ -109,6 +110,63 @@ async def _render(
         console.print(f"[green]Сохранено:[/green] {output}")
     else:
         console.print(result.content)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# merge — объединение и дедупликация JSON-файлов из разных источников
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@app.command()
+def merge(
+    files: list[Path] = typer.Argument(help="JSON-файлы для объединения (минимум 2)"),
+    output: Path = typer.Option(None, "--output", "-o", help="Путь к выходному файлу"),
+    threshold: float = typer.Option(80.0, "--threshold", "-t", help="Порог схожести для дедупликации (0–100)"),
+    name_key: str = typer.Option("name", "--name-key", help="Поле с названием организации"),
+    city_key: str = typer.Option("city", "--city-key", help="Поле с городом (для фильтрации дублей)"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Подробный лог"),
+) -> None:
+    """Объединить несколько JSON-файлов с дедупликацией по названию организации."""
+    if len(files) < 2:
+        console.print("[red]Укажите минимум 2 файла для объединения.[/red]")
+        raise typer.Exit(1)
+
+    if verbose:
+        logging.basicConfig(level=logging.DEBUG)
+
+    all_records: list[dict] = []
+    for f in files:
+        if not f.exists():
+            console.print(f"[red]Файл не найден:[/red] {f}")
+            raise typer.Exit(1)
+        try:
+            data = json.loads(f.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            console.print(f"[red]Ошибка чтения {f}:[/red] {exc}")
+            raise typer.Exit(1)
+        if not isinstance(data, list):
+            console.print(f"[red]Файл {f} не содержит JSON-массив.[/red]")
+            raise typer.Exit(1)
+        all_records.extend(data)
+        console.print(f"[dim]Загружено {len(data)} записей из {f}[/dim]")
+
+    console.print(f"Всего записей до дедупликации: [bold]{len(all_records)}[/bold]")
+
+    deduped = deduplicate(all_records, name_key=name_key, city_key=city_key, threshold=threshold)
+    removed = len(all_records) - len(deduped)
+    console.print(f"Удалено дублей: [yellow]{removed}[/yellow]. Осталось: [bold]{len(deduped)}[/bold]")
+
+    # Сохранение
+    if output is None:
+        from src.output.naming import auto_path
+        output = auto_path("merge", "all", "merged", "json")
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(
+        json.dumps(deduped, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    console.print(f"[green]Сохранено:[/green] {output}")
 
 
 if __name__ == "__main__":

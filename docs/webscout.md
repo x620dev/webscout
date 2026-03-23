@@ -625,13 +625,23 @@ output:
 > (нужен в фазе 2); базовые модели `Contacts`, `GeoPoint`, `ScrapedEntity` в `core/models.py`.
 
 ### Фаза 1: OrgScout (порт)
-- [ ] Портировать scrapers: yandex_maps, twogis
-- [ ] Портировать модели: Organization, Contacts
-- [ ] CLI: `webscout org scrape ...`, `webscout org fetch ...`
-- [ ] Нечёткий матчинг (rapidfuzz) — core-утилита для merge и enrich
-- [ ] Команда `webscout merge` — объединение и дедупликация JSON из разных источников
-- [ ] Портировать тесты orgscout
-- [ ] Проверить что всё работает как раньше
+- [x] Портировать scrapers: yandex_maps, twogis
+- [x] Портировать модели: Organization, Contacts
+- [x] CLI: `webscout org scrape ...`, `webscout org fetch ...`
+- [x] Нечёткий матчинг (rapidfuzz) — core-утилита для merge и enrich
+- [x] Команда `webscout merge` — объединение и дедупликация JSON из разных источников
+- [x] Портировать тесты orgscout
+- [x] Проверить что всё работает как раньше
+
+> **Выполнено.** Созданы: `src/tools/orgscout/models.py` (Organization наследует ScrapedEntity),
+> `src/tools/orgscout/scrapers/yandex_maps.py` (DOM-парсинг + автоскролл, helper `_extract_geo_from_url`),
+> `src/tools/orgscout/scrapers/twogis.py` (перехват catalog.api.2gis.ru, публичная `parse_api_item` для тестирования),
+> `src/tools/orgscout/cli.py` (scrape/fetch sub-apps, флаги --csv/--append/--verbose),
+> `src/core/matching.py` (normalize_name, find_best_match, find_matches, deduplicate),
+> команда `webscout merge` добавлена в корневой `cli.py`.
+> Тесты: 230 проходят (78 новых). Ключевые решения: `parse_api_item` вынесена
+> в module-level функцию (удобно тестировать без Playwright); `address: str | list[str]`
+> сохранён по спеке; дедупликация фильтрует по городу для снижения false-positives.
 
 ### Фаза 2: JobScout
 - [ ] Скрапер hh.ru (REST API, без Playwright)
