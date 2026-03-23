@@ -11,6 +11,20 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+# Пропустить все тесты если mcp не установлен
+pytestmark = pytest.mark.skipif(
+    pytest.importorskip("mcp", reason="mcp не установлен") is None,
+    reason="mcp не установлен",
+)
+
+
+def _skip_if_no_mcp() -> None:
+    """Бросить Skip если mcp недоступен."""
+    try:
+        import mcp  # noqa: F401
+    except ImportError:
+        pytest.skip("mcp не установлен")
+
 
 # ─── Вспомогательные фикстуры ─────────────────────────────────────────────────
 
@@ -51,10 +65,7 @@ def make_legal(**kwargs) -> MagicMock:
 
 def test_to_json_with_pydantic_models():
     """_to_json сериализует список Pydantic-моделей."""
-    try:
-        from mcp import __version__  # noqa: F401
-    except ImportError:
-        pytest.skip("mcp не установлен")
+    _skip_if_no_mcp()
 
     from src.mcp_server import _to_json
 
@@ -68,10 +79,7 @@ def test_to_json_with_pydantic_models():
 
 def test_to_json_empty():
     """_to_json возвращает пустой массив для пустого списка."""
-    try:
-        from mcp import __version__  # noqa: F401
-    except ImportError:
-        pytest.skip("mcp не установлен")
+    _skip_if_no_mcp()
 
     from src.mcp_server import _to_json
 
@@ -85,10 +93,7 @@ def test_to_json_empty():
 @pytest.mark.asyncio
 async def test_scrape_organizations_yandex():
     """scrape_organizations с source=yandex-maps возвращает JSON-массив."""
-    try:
-        from mcp import __version__  # noqa: F401
-    except ImportError:
-        pytest.skip("mcp не установлен")
+    _skip_if_no_mcp()
 
     from src.mcp_server import scrape_organizations
 
@@ -116,10 +121,7 @@ async def test_scrape_organizations_yandex():
 @pytest.mark.asyncio
 async def test_scrape_organizations_unknown_source():
     """scrape_organizations с неизвестным source использует yandex-maps по умолчанию."""
-    try:
-        from mcp import __version__  # noqa: F401
-    except ImportError:
-        pytest.skip("mcp не установлен")
+    _skip_if_no_mcp()
 
     from src.mcp_server import scrape_organizations
 
@@ -150,10 +152,7 @@ async def test_scrape_organizations_unknown_source():
 @pytest.mark.asyncio
 async def test_fetch_organization_found():
     """fetch_organization возвращает JSON-объект найденной организации."""
-    try:
-        from mcp import __version__  # noqa: F401
-    except ImportError:
-        pytest.skip("mcp не установлен")
+    _skip_if_no_mcp()
 
     from src.mcp_server import fetch_organization
 
@@ -181,10 +180,7 @@ async def test_fetch_organization_found():
 @pytest.mark.asyncio
 async def test_fetch_organization_not_found():
     """fetch_organization возвращает ошибку если организация не найдена."""
-    try:
-        from mcp import __version__  # noqa: F401
-    except ImportError:
-        pytest.skip("mcp не установлен")
+    _skip_if_no_mcp()
 
     from src.mcp_server import fetch_organization
 
@@ -214,10 +210,7 @@ async def test_fetch_organization_not_found():
 @pytest.mark.asyncio
 async def test_search_legal_no_query():
     """search_legal без name и inn возвращает ошибку."""
-    try:
-        from mcp import __version__  # noqa: F401
-    except ImportError:
-        pytest.skip("mcp не установлен")
+    _skip_if_no_mcp()
 
     from src.mcp_server import search_legal
 
@@ -229,10 +222,7 @@ async def test_search_legal_no_query():
 @pytest.mark.asyncio
 async def test_search_legal_egrul():
     """search_legal с source=egrul возвращает JSON-массив юрлиц."""
-    try:
-        from mcp import __version__  # noqa: F401
-    except ImportError:
-        pytest.skip("mcp не установлен")
+    _skip_if_no_mcp()
 
     from src.mcp_server import search_legal
 
