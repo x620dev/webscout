@@ -1,0 +1,31 @@
+browser:
+  headless: true
+  viewport:
+    width: 1920
+    height: 1080
+  locale: "ru-RU"
+  timezone: "Asia/Yekaterinburg"
+  rotate_user_agent: true
+
+scraping:
+  delay_min: 1.0
+  delay_max: 3.0
+  max_results: 500
+  scroll_pause: 2.0
+  page_load_timeout: 30
+  retry_on_captcha: true
+  captcha_timeout: 120
+
+http:
+  rate_limit: 5
+  timeout: 30
+  retries: 3
+
+proxy:
+  enabled: false
+  url: null
+
+output:
+  format: json
+  pretty: true
+  include_photos: false

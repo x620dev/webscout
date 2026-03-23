@@ -1,0 +1,30 @@
+[project]
+name = "webscout"
+version = "0.1.0"
+description = "CLI-инструменты для исследования рынка через веб"
+requires-python = ">=3.12"
+dependencies = [
+    "playwright>=1.49",
+    "typer>=0.15",
+    "pydantic>=2.0",
+    "pyyaml>=6.0",
+    "rich>=13.0",
+    "httpx>=0.27",
+    "rapidfuzz>=3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+]
+mcp = [
+    "mcp>=1.0",
+]
+
+[project.scripts]
+webscout = "src.cli:app"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

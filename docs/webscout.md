@@ -607,15 +607,22 @@ output:
 ## Фазы разработки
 
 ### Фаза 0: Инициализация проекта
-- [ ] Создать структуру монорепозитория
-- [ ] Настроить pyproject.toml с единой точкой входа `webscout`
-- [ ] Портировать core из OrgScout: browser, anti_detect, renderer, config
-- [ ] Портировать output: json_writer, csv_writer, ai_summary
-- [ ] Progress bar (rich) для долгих операций (`output/progress.py`)
-- [ ] Автоименование выходных файлов (`{datetime}_{tool}_{city}_{query}.json`) + транслитерация
-- [ ] Обработка частичных результатов (сохранение при прерывании) и флаг `--append`
-- [ ] Корневой cli.py с подключением подкоманд
-- [ ] Портировать тесты core
+- [x] Создать структуру монорепозитория
+- [x] Настроить pyproject.toml с единой точкой входа `webscout`
+- [x] Портировать core из OrgScout: browser, anti_detect, renderer, config
+- [x] Портировать output: json_writer, csv_writer, ai_summary
+- [x] Progress bar (rich) для долгих операций (`output/progress.py`)
+- [x] Автоименование выходных файлов (`{datetime}_{tool}_{city}_{query}.json`) + транслитерация
+- [x] Обработка частичных результатов (сохранение при прерывании) и флаг `--append`
+- [x] Корневой cli.py с подключением подкоманд
+- [x] Портировать тесты core
+
+> **Выполнено.** Создана полная структура монорепо: `src/core/` (config, models, browser,
+> anti_detect, renderer, http_client), `src/output/` (json_writer, csv_writer, ai_summary,
+> progress, naming, partial), `src/cli.py` (root CLI с командой `render`), `tests/` (152 теста,
+> все проходят). Ключевые решения: output-модули обобщены до `BaseModel` (не привязаны к
+> Organization); транслитерация кириллицы в `naming.py`; `http_client.py` добавлен в core
+> (нужен в фазе 2); базовые модели `Contacts`, `GeoPoint`, `ScrapedEntity` в `core/models.py`.
 
 ### Фаза 1: OrgScout (порт)
 - [ ] Портировать scrapers: yandex_maps, twogis
