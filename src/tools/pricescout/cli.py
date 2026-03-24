@@ -14,7 +14,7 @@ from rich.console import Console
 from src.core.browser import BrowserManager
 from src.core.config import load_config
 from src.output.json_writer import save_json
-from src.output.naming import auto_path
+from src.output.naming import auto_path, named_path
 from src.output.progress import scraping_progress
 from src.tools.pricescout.scrapers.dikidi import DikidiScraper
 from src.tools.pricescout.scrapers.yclients import YclientsScraper
@@ -44,7 +44,7 @@ app.add_typer(fetch_app, name="fetch")
 def fetch_yclients(
     url: str = typer.Option(..., "--url", "-u", help="URL виджета YCLIENTS"),
     org_name: str = typer.Option("", "--name", "-n", help="Название организации"),
-    output: Path = typer.Option(None, "--output", "-o", help="Путь к выходному файлу"),
+    output: str = typer.Option(None, "--output", "-o", help="Имя выходного файла (сохраняется в data/json/)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Подробный лог"),
     config_path: Path = typer.Option(None, "--config", "-c", help="Путь к config.yaml"),
 ) -> None:
@@ -63,7 +63,7 @@ def fetch_yclients(
 def fetch_dikidi(
     url: str = typer.Option(..., "--url", "-u", help="URL виджета Dikidi"),
     org_name: str = typer.Option("", "--name", "-n", help="Название организации"),
-    output: Path = typer.Option(None, "--output", "-o", help="Путь к выходному файлу"),
+    output: str = typer.Option(None, "--output", "-o", help="Имя выходного файла (сохраняется в data/json/)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Подробный лог"),
     config_path: Path = typer.Option(None, "--config", "-c", help="Путь к config.yaml"),
 ) -> None:
@@ -81,9 +81,9 @@ def fetch_dikidi(
 @app.command(name="collect")
 def collect(
     input_file: Path = typer.Argument(help="JSON-файл организаций с полем online_booking"),
-    output: Path = typer.Option(
+    output: str = typer.Option(
         None, "--output", "-o",
-        help="Выходной файл (по умолчанию — перезаписать входной)",
+        help="Имя выходного файла в data/json/ (по умолчанию — перезаписать входной)",
     ),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Подробный лог"),
     config_path: Path = typer.Option(None, "--config", "-c", help="Путь к config.yaml"),
@@ -108,11 +108,11 @@ def collect(
 async def _run_fetch_yclients(
     url: str,
     org_name: str,
-    output: Path | None,
+    output: str | None,
     config_path: Path | None,
 ) -> None:
     cfg = load_config(config_path)
-    out_path = output or auto_path("pricescout", "yclients", org_name or "unknown", "json")
+    out_path = named_path(output, "json") if output else auto_path("pricescout", "yclients", org_name or "unknown", "json")
 
     console.print(
         f"[bold]PriceScout YCLIENTS[/bold] · URL: [cyan]{url}[/cyan]"
@@ -144,11 +144,11 @@ async def _run_fetch_yclients(
 async def _run_fetch_dikidi(
     url: str,
     org_name: str,
-    output: Path | None,
+    output: str | None,
     config_path: Path | None,
 ) -> None:
     cfg = load_config(config_path)
-    out_path = output or auto_path("pricescout", "dikidi", org_name or "unknown", "json")
+    out_path = named_path(output, "json") if output else auto_path("pricescout", "dikidi", org_name or "unknown", "json")
 
     console.print(
         f"[bold]PriceScout Dikidi[/bold] · URL: [cyan]{url}[/cyan]"
@@ -204,7 +204,7 @@ def _detect_crm(url: str) -> str | None:
 
 async def _run_collect(
     input_file: Path,
-    output: Path | None,
+    output: str | None,
     config_path: Path | None,
 ) -> None:
     if not input_file.exists():
@@ -280,7 +280,8 @@ async def _run_collect(
         await ctx.close()
 
     # Сохранение результата
-    out_path = output or input_file
+    out_path = named_path(output, "json") if output else input_file
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(
         json.dumps(organizations, ensure_ascii=False, indent=2),
         encoding="utf-8",

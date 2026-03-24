@@ -14,7 +14,7 @@ from src.core.browser import BrowserManager
 from src.core.config import load_config
 from src.core.matching import find_best_match, normalize_name
 from src.output.json_writer import save_json
-from src.output.naming import auto_path
+from src.output.naming import auto_path, named_path
 from src.output.progress import scraping_progress
 from src.tools.legalscout.models import LegalEntity
 from src.tools.legalscout.scrapers.egrul import EgrulScraper
@@ -49,7 +49,7 @@ def search_egrul(
     name: str = typer.Option("", "--name", "-n", help="Название организации"),
     inn: str = typer.Option("", "--inn", help="ИНН организации"),
     city: str = typer.Option("", "--city", help="Город для фильтрации по региону"),
-    output: Path = typer.Option(None, "--output", "-o", help="Путь к выходному файлу"),
+    output: str = typer.Option(None, "--output", "-o", help="Имя выходного файла (сохраняется в data/json/)"),
     max_results: int = typer.Option(10, "--max-results", help="Лимит результатов"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Подробный лог"),
     config_path: Path = typer.Option(None, "--config", "-c", help="Путь к config.yaml"),
@@ -72,7 +72,7 @@ def search_egrul(
 def search_rusprofile(
     name: str = typer.Option("", "--name", "-n", help="Название организации"),
     inn: str = typer.Option("", "--inn", help="ИНН организации"),
-    output: Path = typer.Option(None, "--output", "-o", help="Путь к выходному файлу"),
+    output: str = typer.Option(None, "--output", "-o", help="Имя выходного файла (сохраняется в data/json/)"),
     max_results: int = typer.Option(5, "--max-results", help="Лимит результатов"),
     details: bool = typer.Option(False, "--details", "-d", help="Загружать полную карточку первой компании"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Подробный лог"),
@@ -99,9 +99,9 @@ def enrich(
         "egrul", "--source", "-s",
         help="Источник юрданных: egrul, rusprofile",
     ),
-    output: Path = typer.Option(
+    output: str = typer.Option(
         None, "--output", "-o",
-        help="Выходной файл (по умолчанию — перезаписать входной)",
+        help="Имя выходного файла в data/json/ (по умолчанию — перезаписать входной)",
     ),
     threshold: float = typer.Option(
         70.0, "--threshold", "-t",
@@ -125,13 +125,13 @@ async def _run_search_egrul(
     name: str,
     inn: str,
     city: str,
-    output: Path | None,
+    output: str | None,
     max_results: int,
     config_path: Path | None,
 ) -> None:
     cfg = load_config(config_path)
     query_label = inn or name
-    out_path = output or auto_path("legalscout", city or "all", query_label, "json")
+    out_path = named_path(output, "json") if output else auto_path("legalscout", city or "all", query_label, "json")
 
     console.print(
         f"[bold]LegalScout ЕГРЮЛ[/bold] · запрос: [yellow]{query_label!r}[/yellow]"
@@ -164,14 +164,14 @@ async def _run_search_egrul(
 async def _run_search_rusprofile(
     name: str,
     inn: str,
-    output: Path | None,
+    output: str | None,
     max_results: int,
     fetch_details: bool,
     config_path: Path | None,
 ) -> None:
     cfg = load_config(config_path)
     query_label = inn or name
-    out_path = output or auto_path("legalscout", "rusprofile", query_label, "json")
+    out_path = named_path(output, "json") if output else auto_path("legalscout", "rusprofile", query_label, "json")
 
     console.print(
         f"[bold]LegalScout Rusprofile[/bold] · запрос: [yellow]{query_label!r}[/yellow]"
@@ -207,7 +207,7 @@ async def _run_search_rusprofile(
 async def _run_enrich(
     input_file: Path,
     source: str,
-    output: Path | None,
+    output: str | None,
     threshold: float,
     config_path: Path | None,
 ) -> None:
@@ -297,7 +297,8 @@ async def _run_enrich(
 
             await ctx.close()
 
-    out_path = output or input_file
+    out_path = named_path(output, "json") if output else input_file
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(
         json.dumps(organizations, ensure_ascii=False, indent=2),
         encoding="utf-8",

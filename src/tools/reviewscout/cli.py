@@ -13,7 +13,7 @@ from rich.console import Console
 from src.core.browser import BrowserManager
 from src.core.config import load_config
 from src.output.json_writer import save_json
-from src.output.naming import auto_path
+from src.output.naming import auto_path, named_path
 from src.output.progress import scraping_progress
 from src.tools.reviewscout.scrapers.flamp import FlampScraper
 from src.tools.reviewscout.scrapers.yandex_reviews import YandexReviewsScraper
@@ -46,7 +46,7 @@ app.add_typer(scrape_app, name="scrape")
 def scrape_yandex(
     url: str = typer.Option(..., "--url", "-u", help="URL карточки организации на Яндекс.Картах"),
     max_reviews: int = typer.Option(50, "--max-reviews", "-n", help="Лимит отзывов"),
-    output: Path = typer.Option(None, "--output", "-o", help="Путь к выходному файлу"),
+    output: str = typer.Option(None, "--output", "-o", help="Имя выходного файла (сохраняется в data/json/)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Подробный лог"),
     config_path: Path = typer.Option(None, "--config", "-c", help="Путь к config.yaml"),
 ) -> None:
@@ -65,7 +65,7 @@ def scrape_yandex(
 def scrape_flamp(
     url: str = typer.Option(..., "--url", "-u", help="URL страницы организации на Flamp"),
     max_reviews: int = typer.Option(50, "--max-reviews", "-n", help="Лимит отзывов"),
-    output: Path = typer.Option(None, "--output", "-o", help="Путь к выходному файлу"),
+    output: str = typer.Option(None, "--output", "-o", help="Имя выходного файла (сохраняется в data/json/)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Подробный лог"),
     config_path: Path = typer.Option(None, "--config", "-c", help="Путь к config.yaml"),
 ) -> None:
@@ -91,9 +91,9 @@ def enrich(
         20, "--max-reviews", "-n",
         help="Максимальное число отзывов на организацию",
     ),
-    output: Path = typer.Option(
+    output: str = typer.Option(
         None, "--output", "-o",
-        help="Выходной файл (по умолчанию — перезаписать входной)",
+        help="Имя выходного файла в data/json/ (по умолчанию — перезаписать входной)",
     ),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Подробный лог"),
     config_path: Path = typer.Option(None, "--config", "-c", help="Путь к config.yaml"),
@@ -116,11 +116,11 @@ def enrich(
 async def _run_scrape_yandex(
     url: str,
     max_reviews: int,
-    output: Path | None,
+    output: str | None,
     config_path: Path | None,
 ) -> None:
     cfg = load_config(config_path)
-    out_path = output or auto_path("reviewscout", "yandex", "reviews", "json")
+    out_path = named_path(output, "json") if output else auto_path("reviewscout", "yandex", "reviews", "json")
 
     console.print(f"[bold]ReviewScout Яндекс[/bold] · URL: [cyan]{url}[/cyan]")
 
@@ -149,11 +149,11 @@ async def _run_scrape_yandex(
 async def _run_scrape_flamp(
     url: str,
     max_reviews: int,
-    output: Path | None,
+    output: str | None,
     config_path: Path | None,
 ) -> None:
     cfg = load_config(config_path)
-    out_path = output or auto_path("reviewscout", "flamp", "reviews", "json")
+    out_path = named_path(output, "json") if output else auto_path("reviewscout", "flamp", "reviews", "json")
 
     console.print(f"[bold]ReviewScout Flamp[/bold] · URL: [cyan]{url}[/cyan]")
 
@@ -183,7 +183,7 @@ async def _run_enrich(
     input_file: Path,
     source: str,
     max_reviews: int,
-    output: Path | None,
+    output: str | None,
     config_path: Path | None,
 ) -> None:
     if not input_file.exists():
@@ -219,7 +219,8 @@ async def _run_enrich(
             f"[yellow]Нет организаций с полем {url_field!r} или source_url — нечего обогащать.[/yellow]"
         )
         # Всё равно сохраняем файл
-        out_path = output or input_file
+        out_path = named_path(output, "json") if output else input_file
+        out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(
             json.dumps(organizations, ensure_ascii=False, indent=2),
             encoding="utf-8",
@@ -263,7 +264,8 @@ async def _run_enrich(
 
         await ctx.close()
 
-    out_path = output or input_file
+    out_path = named_path(output, "json") if output else input_file
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(
         json.dumps(organizations, ensure_ascii=False, indent=2),
         encoding="utf-8",

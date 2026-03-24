@@ -73,7 +73,7 @@ webscout org scrape <источник> [опции]
 | `--query` | `-q` | Поисковый запрос (обязательный) | — |
 | `--city` | | Город (обязательный) | — |
 | `--max-results` | `-n` | Лимит результатов | 50 |
-| `--output` | `-o` | Путь к выходному файлу | автоименование |
+| `--output` | `-o` | Имя выходного файла | автоименование |
 | `--format` | `-f` | Формат: `json`, `ai-summary` | json |
 | `--csv` | | Дополнительно сохранить TSV | false |
 | `--append` | | Дозапуск: дописать к существующему файлу | false |
@@ -91,11 +91,11 @@ webscout org scrape 2gis -q "автосервис" --city "Казань" -n 300 
 
 # Дозапуск: продолжить прерванный скрап
 webscout org scrape yandex-maps -q "маникюр" --city "Уфа" -n 200 \
-  -o data/json/ufa_manicure.json --append
+  -o ufa_manicure.json --append
 
 # Сохранить в конкретный файл
 webscout org scrape 2gis -q "кофейня" --city "Санкт-Петербург" \
-  -o data/json/spb_coffee.json
+  -o spb_coffee.json
 ```
 
 **Когда использовать:**
@@ -116,7 +116,7 @@ webscout org fetch <источник> --org-url <URL> [опции]
 | Опция | Короткая | Описание | По умолчанию |
 |-------|----------|----------|--------------|
 | `--org-url` | | URL карточки (обязательный) | — |
-| `--output` | `-o` | Путь к выходному файлу | вывод в консоль |
+| `--output` | `-o` | Имя выходного файла | вывод в консоль |
 | `--config` | `-c` | Путь к config.yaml | config.yaml |
 | `--verbose` | `-v` | Подробный лог | false |
 
@@ -130,7 +130,7 @@ webscout org fetch yandex-maps \
 # Получить карточку из 2ГИС и сохранить в файл
 webscout org fetch 2gis \
   --org-url "https://2gis.ru/ufa/firm/70000001012345" \
-  -o data/json/firm_card.json
+  -o firm_card.json
 ```
 
 **Когда использовать:**
@@ -158,7 +158,7 @@ webscout jobs search <источник> [опции]
 | `--query` | `-q` | Поисковый запрос (обязательный) | — |
 | `--city` | | Город (обязательный) | — |
 | `--max-results` | `-n` | Лимит результатов | 50 |
-| `--output` | `-o` | Путь к выходному файлу | автоименование |
+| `--output` | `-o` | Имя выходного файла | автоименование |
 | `--config` | `-c` | Путь к config.yaml | config.yaml |
 | `--verbose` | `-v` | Подробный лог | false |
 
@@ -187,7 +187,7 @@ webscout jobs enrich <файл.json> [опции]
 | Опция | Короткая | Описание | По умолчанию |
 |-------|----------|----------|--------------|
 | `--source` | `-s` | Источник вакансий: `hh` | hh |
-| `--output` | `-o` | Выходной файл | перезаписать входной |
+| `--output` | `-o` | Имя выходного файла в data/json/ | перезаписать входной |
 | `--threshold` | `-t` | Порог схожести названий (0–100) | 70.0 |
 | `--max-per-org` | | Лимит вакансий на организацию | 10 |
 | `--config` | `-c` | Путь к config.yaml | config.yaml |
@@ -200,7 +200,7 @@ webscout jobs enrich <файл.json> [опции]
 webscout jobs enrich data/json/ufa_manicure.json
 
 # Сохранить в другой файл, строже матчить
-webscout jobs enrich data/json/studios.json -o data/json/studios_with_jobs.json -t 85
+webscout jobs enrich data/json/studios.json -o studios_with_jobs.json -t 85
 ```
 
 ---
@@ -221,7 +221,7 @@ webscout prices fetch <источник> [опции]
 |-------|----------|----------|--------------|
 | `--url` | `-u` | URL виджета онлайн-записи (обязательный) | — |
 | `--name` | `-n` | Название организации (для метаданных) | — |
-| `--output` | `-o` | Путь к выходному файлу | автоименование |
+| `--output` | `-o` | Имя выходного файла | автоименование |
 | `--config` | `-c` | Путь к config.yaml | config.yaml |
 | `--verbose` | `-v` | Подробный лог | false |
 
@@ -245,7 +245,7 @@ webscout prices collect <файл.json> [опции]
 
 | Опция | Короткая | Описание | По умолчанию |
 |-------|----------|----------|--------------|
-| `--output` | `-o` | Выходной файл | перезаписать входной |
+| `--output` | `-o` | Имя выходного файла в data/json/ | перезаписать входной |
 | `--config` | `-c` | Путь к config.yaml | config.yaml |
 | `--verbose` | `-v` | Подробный лог | false |
 
@@ -261,7 +261,7 @@ webscout prices collect <файл.json> [опции]
 webscout prices collect data/json/ufa_manicure.json
 
 # Сохранить в отдельный файл
-webscout prices collect data/json/studios.json -o data/json/studios_with_prices.json
+webscout prices collect data/json/studios.json -o studios_with_prices.json
 ```
 
 **Когда использовать:**
@@ -286,7 +286,7 @@ webscout reviews scrape <источник> [опции]
 |-------|----------|----------|--------------|
 | `--url` | `-u` | URL карточки/страницы организации (обязательный) | — |
 | `--max-reviews` | `-n` | Лимит отзывов | 50 |
-| `--output` | `-o` | Путь к выходному файлу | автоименование |
+| `--output` | `-o` | Имя выходного файла | автоименование |
 | `--config` | `-c` | Путь к config.yaml | config.yaml |
 | `--verbose` | `-v` | Подробный лог | false |
 
@@ -314,7 +314,7 @@ webscout reviews enrich <файл.json> [опции]
 |-------|----------|----------|--------------|
 | `--source` | `-s` | Платформа: `yandex`, `flamp` | yandex |
 | `--max-reviews` | `-n` | Лимит отзывов на организацию | 20 |
-| `--output` | `-o` | Выходной файл | перезаписать входной |
+| `--output` | `-o` | Имя выходного файла в data/json/ | перезаписать входной |
 | `--config` | `-c` | Путь к config.yaml | config.yaml |
 | `--verbose` | `-v` | Подробный лог | false |
 
@@ -355,7 +355,7 @@ webscout legal search <источник> [опции]
 | `--city` | | Город (только для egrul, фильтр по региону) | — |
 | `--max-results` | | Лимит результатов | 10 (egrul), 5 (rusprofile) |
 | `--details` | `-d` | Загружать полную карточку (только rusprofile) | false |
-| `--output` | `-o` | Путь к выходному файлу | автоименование |
+| `--output` | `-o` | Имя выходного файла | автоименование |
 | `--config` | `-c` | Путь к config.yaml | config.yaml |
 | `--verbose` | `-v` | Подробный лог | false |
 
@@ -385,7 +385,7 @@ webscout legal enrich <файл.json> [опции]
 | Опция | Короткая | Описание | По умолчанию |
 |-------|----------|----------|--------------|
 | `--source` | `-s` | Источник: `egrul`, `rusprofile` | egrul |
-| `--output` | `-o` | Выходной файл | перезаписать входной |
+| `--output` | `-o` | Имя выходного файла в data/json/ | перезаписать входной |
 | `--threshold` | `-t` | Порог схожести названий (0–100) | 70.0 |
 | `--config` | `-c` | Путь к config.yaml | config.yaml |
 | `--verbose` | `-v` | Подробный лог | false |
@@ -400,7 +400,7 @@ webscout legal enrich data/json/ufa_manicure.json
 webscout legal enrich data/json/studios.json --source rusprofile
 
 # С жёстким порогом матчинга
-webscout legal enrich data/json/studios.json -t 85 -o data/json/studios_legal.json
+webscout legal enrich data/json/studios.json -t 85 -o studios_legal.json
 ```
 
 **Когда использовать:**
@@ -420,7 +420,7 @@ webscout merge <файл1.json> <файл2.json> [файл3.json ...] [опци�
 
 | Опция | Короткая | Описание | По умолчанию |
 |-------|----------|----------|--------------|
-| `--output` | `-o` | Выходной файл | автоименование |
+| `--output` | `-o` | Имя выходного файла | автоименование |
 | `--threshold` | `-t` | Порог схожести для дедупликации (0–100) | 80.0 |
 | `--name-key` | | Поле с названием организации | name |
 | `--city-key` | | Поле с городом | city |
@@ -431,7 +431,7 @@ webscout merge <файл1.json> <файл2.json> [файл3.json ...] [опци�
 ```bash
 # Объединить результаты из Яндекс.Карт и 2ГИС
 webscout merge data/json/yandex_results.json data/json/2gis_results.json \
-  -o data/json/all_orgs.json
+  -o all_orgs.json
 
 # Строгая дедупликация
 webscout merge file1.json file2.json file3.json -t 90
@@ -541,7 +541,7 @@ webscout render <URL> [опции]
 
 | Опция | Короткая | Описание | По умолчанию |
 |-------|----------|----------|--------------|
-| `--output` | `-o` | Файл для сохранения | вывод в консоль |
+| `--output` | `-o` | Имя выходного файла (сохраняется в data/) | вывод в консоль |
 | `--format` | `-f` | Формат: `html`, `text` | html |
 | `--wait-for` | `-w` | CSS-селектор для ожидания загрузки | — |
 | `--intercept` | `-i` | Паттерн URL для перехвата API-ответов (можно несколько) | — |
@@ -551,7 +551,7 @@ webscout render <URL> [опции]
 **Примеры:**
 
 ```bash
-# Получить отрендеренный HTML SPA-страницы
+# Получить отрендеренный HTML SPA-страницы (сохраняется в data/page.html)
 webscout render "https://example.com/spa-page" -o page.html
 
 # Получить текст, дождавшись загрузки элемента
@@ -575,17 +575,17 @@ webscout render "https://example.com/app" \
 Пошаговый пример — исследование рынка маникюра в Уфе:
 
 ```bash
-# 1. Собрать организации с Яндекс.Карт
+# 1. Собрать организации с Яндекс.Карт → data/json/studios.json
 webscout org scrape yandex-maps -q "маникюр" --city "Уфа" -n 200 \
-  -o data/json/studios.json
+  -o studios.json
 
-# 2. Дополнить результатами из 2ГИС
+# 2. Дополнить результатами из 2ГИС → data/json/studios_2gis.json
 webscout org scrape 2gis -q "ногтевая студия" --city "Уфа" -n 200 \
-  -o data/json/studios_2gis.json
+  -o studios_2gis.json
 
-# 3. Объединить с дедупликацией
+# 3. Объединить с дедупликацией → data/json/studios_all.json
 webscout merge data/json/studios.json data/json/studios_2gis.json \
-  -o data/json/studios_all.json
+  -o studios_all.json
 
 # 4. Кто нанимает сотрудников? (признак роста)
 webscout jobs enrich data/json/studios_all.json
@@ -609,7 +609,23 @@ webscout legal enrich data/json/studios_all.json --source egrul
 
 ## Выходные данные
 
-### Автоименование файлов
+### Расположение файлов
+
+Параметр `-o` принимает **только имя файла** (без пути). Директория определяется автоматически по формату:
+
+| Формат | Директория |
+|--------|-----------|
+| JSON (по умолчанию) | `data/json/` |
+| CSV/TSV (`--csv`) | `data/csv/` |
+| AI-summary | `data/ai/` |
+
+```bash
+webscout org scrape yandex-maps -q "маникюр" --city "Уфа" -o studios.json
+# → data/json/studios.json
+
+webscout org scrape yandex-maps -q "маникюр" --city "Уфа" -o studios.json --csv
+# → data/json/studios.json  +  data/csv/studios.tsv
+```
 
 Если `-o` не указан, файл создаётся автоматически:
 
@@ -647,7 +663,7 @@ data/{формат}/{дата}_{инструмент}_{город}_{запрос
 
 ### TSV-вывод (`--csv`)
 
-В `org scrape` можно дополнительно получить файл `.tsv` — удобно для Excel / Google Sheets.
+В `org scrape` можно дополнительно получить файл `.tsv` — удобно для Excel / Google Sheets. TSV сохраняется в `data/csv/` (независимо от расположения JSON).
 
 ---
 

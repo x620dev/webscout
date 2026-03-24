@@ -80,9 +80,9 @@ def test_prices_fetch_dikidi_missing_url():
     assert result.exit_code != 0
 
 
-def test_prices_fetch_yclients_runs(tmp_path):
+def test_prices_fetch_yclients_runs(tmp_path, monkeypatch):
     """fetch yclients сохраняет результат в JSON."""
-    out = tmp_path / "prices.json"
+    monkeypatch.chdir(tmp_path)
     price_list = make_price_list()
 
     mock_scraper = AsyncMock()
@@ -99,10 +99,11 @@ def test_prices_fetch_yclients_runs(tmp_path):
         result = runner.invoke(app, [
             "prices", "fetch", "yclients",
             "--url", "https://yclients.com/company/1/",
-            "--output", str(out),
+            "--output", "prices.json",
         ])
 
     assert result.exit_code == 0, result.output
+    out = tmp_path / "data" / "json" / "prices.json"
     assert out.exists()
     data = json.loads(out.read_text())
     assert isinstance(data, list)
@@ -111,9 +112,9 @@ def test_prices_fetch_yclients_runs(tmp_path):
     assert len(data[0]["services"]) == 2
 
 
-def test_prices_fetch_dikidi_runs(tmp_path):
+def test_prices_fetch_dikidi_runs(tmp_path, monkeypatch):
     """fetch dikidi сохраняет результат в JSON."""
-    out = tmp_path / "prices.json"
+    monkeypatch.chdir(tmp_path)
     price_list = make_price_list(
         source="dikidi",
         source_url="https://dikidi.net/salon/456",
@@ -134,16 +135,16 @@ def test_prices_fetch_dikidi_runs(tmp_path):
         result = runner.invoke(app, [
             "prices", "fetch", "dikidi",
             "--url", "https://dikidi.net/salon/456",
-            "--output", str(out),
+            "--output", "prices.json",
         ])
 
     assert result.exit_code == 0, result.output
-    assert out.exists()
+    assert (tmp_path / "data" / "json" / "prices.json").exists()
 
 
-def test_prices_fetch_yclients_scraper_fails(tmp_path):
+def test_prices_fetch_yclients_scraper_fails(tmp_path, monkeypatch):
     """fetch yclients сообщает об ошибке если скрапер вернул None."""
-    out = tmp_path / "prices.json"
+    monkeypatch.chdir(tmp_path)
 
     mock_scraper = AsyncMock()
     mock_scraper.fetch = AsyncMock(return_value=None)
@@ -159,7 +160,7 @@ def test_prices_fetch_yclients_scraper_fails(tmp_path):
         result = runner.invoke(app, [
             "prices", "fetch", "yclients",
             "--url", "https://yclients.com/company/1/",
-            "--output", str(out),
+            "--output", "prices.json",
         ])
 
     assert result.exit_code != 0
@@ -206,10 +207,10 @@ def test_prices_collect_no_booking_urls(tmp_path):
     assert result.exit_code == 0
 
 
-def test_prices_collect_yclients(tmp_path):
+def test_prices_collect_yclients(tmp_path, monkeypatch):
     """collect обогащает организации прайсами с YCLIENTS."""
+    monkeypatch.chdir(tmp_path)
     input_file = tmp_path / "orgs.json"
-    out_file = tmp_path / "enriched.json"
 
     orgs = [
         {
@@ -238,12 +239,13 @@ def test_prices_collect_yclients(tmp_path):
          patch("src.tools.pricescout.cli.YclientsScraper", return_value=mock_scraper):
         result = runner.invoke(app, [
             "prices", "collect", str(input_file),
-            "--output", str(out_file),
+            "--output", "enriched.json",
         ])
 
     assert result.exit_code == 0, result.output
-    assert out_file.exists()
-    data = json.loads(out_file.read_text())
+    out = tmp_path / "data" / "json" / "enriched.json"
+    assert out.exists()
+    data = json.loads(out.read_text())
 
     # Первая организация должна быть обогащена
     assert "_enriched" in data[0]
@@ -254,10 +256,10 @@ def test_prices_collect_yclients(tmp_path):
     assert "_enriched" not in data[1]
 
 
-def test_prices_collect_dikidi(tmp_path):
+def test_prices_collect_dikidi(tmp_path, monkeypatch):
     """collect обогащает организации прайсами с Dikidi."""
+    monkeypatch.chdir(tmp_path)
     input_file = tmp_path / "orgs.json"
-    out_file = tmp_path / "enriched.json"
 
     orgs = [{"name": "Nail Bar", "online_booking": "https://dikidi.net/salon/789"}]
     input_file.write_text(json.dumps(orgs, ensure_ascii=False), encoding="utf-8")
@@ -281,19 +283,20 @@ def test_prices_collect_dikidi(tmp_path):
          patch("src.tools.pricescout.cli.DikidiScraper", return_value=mock_scraper):
         result = runner.invoke(app, [
             "prices", "collect", str(input_file),
-            "--output", str(out_file),
+            "--output", "enriched.json",
         ])
 
     assert result.exit_code == 0, result.output
-    data = json.loads(out_file.read_text())
+    out = tmp_path / "data" / "json" / "enriched.json"
+    data = json.loads(out.read_text())
     assert "_enriched" in data[0]
     assert data[0]["_enriched"]["prices"]["source"] == "dikidi"
 
 
-def test_prices_collect_unknown_crm_skipped(tmp_path):
+def test_prices_collect_unknown_crm_skipped(tmp_path, monkeypatch):
     """collect пропускает организации с неизвестным CRM."""
+    monkeypatch.chdir(tmp_path)
     input_file = tmp_path / "orgs.json"
-    out_file = tmp_path / "enriched.json"
 
     orgs = [{"name": "Студия", "online_booking": "https://unknowncrm.ru/booking/123"}]
     input_file.write_text(json.dumps(orgs, ensure_ascii=False), encoding="utf-8")
@@ -306,11 +309,12 @@ def test_prices_collect_unknown_crm_skipped(tmp_path):
     with patch("src.tools.pricescout.cli.BrowserManager", return_value=mock_manager):
         result = runner.invoke(app, [
             "prices", "collect", str(input_file),
-            "--output", str(out_file),
+            "--output", "enriched.json",
         ])
 
     assert result.exit_code == 0
-    data = json.loads(out_file.read_text())
+    out = tmp_path / "data" / "json" / "enriched.json"
+    data = json.loads(out.read_text())
     # Пропущено — нет обогащения
     assert "_enriched" not in data[0]
 

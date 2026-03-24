@@ -50,9 +50,9 @@ def test_scrape_yandex_maps_missing_city():
     assert result.exit_code != 0
 
 
-def test_scrape_yandex_maps_runs(tmp_path):
+def test_scrape_yandex_maps_runs(tmp_path, monkeypatch):
     """Команда scrape yandex-maps выполняется и сохраняет результат."""
-    out = tmp_path / "result.json"
+    monkeypatch.chdir(tmp_path)
     orgs = [make_org()]
 
     mock_scraper = AsyncMock()
@@ -70,10 +70,11 @@ def test_scrape_yandex_maps_runs(tmp_path):
             "org", "scrape", "yandex-maps",
             "--query", "маникюр",
             "--city", "Уфа",
-            "--output", str(out),
+            "--output", "result.json",
         ])
 
     assert result.exit_code == 0, result.output
+    out = tmp_path / "data" / "json" / "result.json"
     assert out.exists()
     data = json.loads(out.read_text())
     assert len(data) == 1
@@ -90,9 +91,9 @@ def test_scrape_2gis_help():
     assert "--query" in result.output
 
 
-def test_scrape_2gis_runs(tmp_path):
+def test_scrape_2gis_runs(tmp_path, monkeypatch):
     """Команда scrape 2gis выполняется и сохраняет результат."""
-    out = tmp_path / "result.json"
+    monkeypatch.chdir(tmp_path)
     orgs = [make_org(source="twogis", source_url="https://2gis.ru/firm/1")]
 
     mock_scraper = AsyncMock()
@@ -110,11 +111,11 @@ def test_scrape_2gis_runs(tmp_path):
             "org", "scrape", "2gis",
             "--query", "маникюр",
             "--city", "Уфа",
-            "--output", str(out),
+            "--output", "result.json",
         ])
 
     assert result.exit_code == 0, result.output
-    assert out.exists()
+    assert (tmp_path / "data" / "json" / "result.json").exists()
 
 
 # ─── org fetch ────────────────────────────────────────────────────────────────
@@ -127,9 +128,9 @@ def test_fetch_yandex_maps_help():
     assert "--org-url" in result.output
 
 
-def test_fetch_yandex_maps_runs(tmp_path):
+def test_fetch_yandex_maps_runs(tmp_path, monkeypatch):
     """Команда fetch yandex-maps получает организацию и сохраняет."""
-    out = tmp_path / "org.json"
+    monkeypatch.chdir(tmp_path)
     org = make_org()
 
     mock_scraper = AsyncMock()
@@ -146,10 +147,11 @@ def test_fetch_yandex_maps_runs(tmp_path):
         result = runner.invoke(app, [
             "org", "fetch", "yandex-maps",
             "--org-url", "https://yandex.ru/maps/org/test/1/",
-            "--output", str(out),
+            "--output", "org.json",
         ])
 
     assert result.exit_code == 0, result.output
+    out = tmp_path / "data" / "json" / "org.json"
     assert out.exists()
     data = json.loads(out.read_text())
     assert data[0]["name"] == "Тестовая Студия"
@@ -179,9 +181,9 @@ def test_fetch_2gis_not_found(tmp_path):
 # ─── scrape --csv флаг ────────────────────────────────────────────────────────
 
 
-def test_scrape_with_csv_flag(tmp_path):
-    """Флаг --csv сохраняет дополнительный TSV-файл."""
-    out = tmp_path / "result.json"
+def test_scrape_with_csv_flag(tmp_path, monkeypatch):
+    """Флаг --csv сохраняет дополнительный TSV-файл в data/csv/."""
+    monkeypatch.chdir(tmp_path)
     orgs = [make_org()]
 
     mock_scraper = AsyncMock()
@@ -199,13 +201,13 @@ def test_scrape_with_csv_flag(tmp_path):
             "org", "scrape", "yandex-maps",
             "--query", "маникюр",
             "--city", "Уфа",
-            "--output", str(out),
+            "--output", "result.json",
             "--csv",
         ])
 
     assert result.exit_code == 0, result.output
-    tsv_path = out.with_suffix(".tsv")
-    assert tsv_path.exists()
+    assert (tmp_path / "data" / "json" / "result.json").exists()
+    assert (tmp_path / "data" / "csv" / "result.tsv").exists()
 
 
 # ─── merge ────────────────────────────────────────────────────────────────────
@@ -218,11 +220,11 @@ def test_merge_help():
     assert "--threshold" in result.output
 
 
-def test_merge_two_files(tmp_path):
+def test_merge_two_files(tmp_path, monkeypatch):
     """Команда merge объединяет два файла с дедупликацией."""
+    monkeypatch.chdir(tmp_path)
     file1 = tmp_path / "a.json"
     file2 = tmp_path / "b.json"
-    out = tmp_path / "merged.json"
 
     file1.write_text(json.dumps([
         {"name": "Colorstar", "city": "Уфа"},
@@ -236,11 +238,12 @@ def test_merge_two_files(tmp_path):
 
     result = runner.invoke(app, [
         "merge", str(file1), str(file2),
-        "--output", str(out),
+        "--output", "merged.json",
         "--threshold", "90",
     ])
 
     assert result.exit_code == 0, result.output
+    out = tmp_path / "data" / "json" / "merged.json"
     assert out.exists()
     data = json.loads(out.read_text())
     # Дубль "Colorstar" должен быть удалён

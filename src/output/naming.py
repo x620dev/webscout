@@ -53,6 +53,33 @@ def slugify(text: str) -> str:
     return re.sub(r"[^\w]", "_", translit).strip("_")
 
 
+def named_path(name: str, fmt: str = "json") -> Path:
+    """Разрешить путь к файлу по имени и формату.
+
+    Директория определяется автоматически:
+    - json       → data/json/
+    - csv        → data/csv/
+    - ai-summary → data/ai/
+
+    Если расширение не указано, добавляется соответствующее формату.
+
+    Examples:
+        >>> named_path("result", "json")
+        PosixPath('data/json/result.json')
+        >>> named_path("result.json", "json")
+        PosixPath('data/json/result.json')
+        >>> named_path("report", "ai-summary")
+        PosixPath('data/ai/report.md')
+    """
+    dir_name = _FMT_DIR.get(fmt, "json")
+    ext = _FMT_EXT.get(fmt, ".json")
+    # Используем только имя файла — без директории (на случай если передан полный путь)
+    p = Path(Path(name).name)
+    if not p.suffix:
+        p = p.with_suffix(ext)
+    return Path("data") / dir_name / p
+
+
 def auto_path(
     tool: str,
     city: str,

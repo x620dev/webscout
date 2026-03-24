@@ -81,9 +81,9 @@ def test_reviews_scrape_flamp_missing_url():
     assert result.exit_code != 0
 
 
-def test_reviews_scrape_yandex_runs(tmp_path):
+def test_reviews_scrape_yandex_runs(tmp_path, monkeypatch):
     """scrape yandex сохраняет результат в JSON."""
-    out = tmp_path / "reviews.json"
+    monkeypatch.chdir(tmp_path)
     summary = make_summary()
 
     mock_scraper = AsyncMock()
@@ -100,10 +100,11 @@ def test_reviews_scrape_yandex_runs(tmp_path):
         result = runner.invoke(app, [
             "reviews", "scrape", "yandex",
             "--url", "https://yandex.ru/maps/org/salon/123456789/",
-            "--output", str(out),
+            "--output", "reviews.json",
         ])
 
     assert result.exit_code == 0, result.output
+    out = tmp_path / "data" / "json" / "reviews.json"
     assert out.exists()
     data = json.loads(out.read_text())
     assert isinstance(data, list)
@@ -112,9 +113,9 @@ def test_reviews_scrape_yandex_runs(tmp_path):
     assert len(data[0]["reviews"]) == 2
 
 
-def test_reviews_scrape_flamp_runs(tmp_path):
+def test_reviews_scrape_flamp_runs(tmp_path, monkeypatch):
     """scrape flamp сохраняет результат в JSON."""
-    out = tmp_path / "reviews.json"
+    monkeypatch.chdir(tmp_path)
     summary = make_summary(
         source="flamp",
         source_url="https://ufa.flamp.ru/firm/salon-123",
@@ -134,16 +135,16 @@ def test_reviews_scrape_flamp_runs(tmp_path):
         result = runner.invoke(app, [
             "reviews", "scrape", "flamp",
             "--url", "https://ufa.flamp.ru/firm/salon-123",
-            "--output", str(out),
+            "--output", "reviews.json",
         ])
 
     assert result.exit_code == 0, result.output
-    assert out.exists()
+    assert (tmp_path / "data" / "json" / "reviews.json").exists()
 
 
-def test_reviews_scrape_yandex_fails(tmp_path):
+def test_reviews_scrape_yandex_fails(tmp_path, monkeypatch):
     """scrape yandex сообщает об ошибке если скрапер вернул None."""
-    out = tmp_path / "reviews.json"
+    monkeypatch.chdir(tmp_path)
 
     mock_scraper = AsyncMock()
     mock_scraper.scrape = AsyncMock(return_value=None)
@@ -159,7 +160,7 @@ def test_reviews_scrape_yandex_fails(tmp_path):
         result = runner.invoke(app, [
             "reviews", "scrape", "yandex",
             "--url", "https://yandex.ru/maps/org/salon/1/",
-            "--output", str(out),
+            "--output", "reviews.json",
         ])
 
     assert result.exit_code != 0
@@ -220,10 +221,10 @@ def test_reviews_enrich_no_urls(tmp_path):
     assert result.exit_code == 0
 
 
-def test_reviews_enrich_yandex(tmp_path):
+def test_reviews_enrich_yandex(tmp_path, monkeypatch):
     """enrich обогащает организации отзывами с Яндекс."""
+    monkeypatch.chdir(tmp_path)
     input_file = tmp_path / "orgs.json"
-    out_file = tmp_path / "enriched.json"
 
     orgs = [
         {
@@ -252,12 +253,13 @@ def test_reviews_enrich_yandex(tmp_path):
         result = runner.invoke(app, [
             "reviews", "enrich", str(input_file),
             "--source", "yandex",
-            "--output", str(out_file),
+            "--output", "enriched.json",
         ])
 
     assert result.exit_code == 0, result.output
-    assert out_file.exists()
-    data = json.loads(out_file.read_text())
+    out = tmp_path / "data" / "json" / "enriched.json"
+    assert out.exists()
+    data = json.loads(out.read_text())
 
     # Первая организация обогащена
     assert "_enriched" in data[0]
@@ -269,10 +271,10 @@ def test_reviews_enrich_yandex(tmp_path):
     assert "_enriched" not in data[1]
 
 
-def test_reviews_enrich_flamp(tmp_path):
+def test_reviews_enrich_flamp(tmp_path, monkeypatch):
     """enrich обогащает организации отзывами с Flamp."""
+    monkeypatch.chdir(tmp_path)
     input_file = tmp_path / "orgs.json"
-    out_file = tmp_path / "enriched.json"
 
     orgs = [
         {
@@ -301,11 +303,12 @@ def test_reviews_enrich_flamp(tmp_path):
         result = runner.invoke(app, [
             "reviews", "enrich", str(input_file),
             "--source", "flamp",
-            "--output", str(out_file),
+            "--output", "enriched.json",
         ])
 
     assert result.exit_code == 0, result.output
-    data = json.loads(out_file.read_text())
+    out = tmp_path / "data" / "json" / "enriched.json"
+    data = json.loads(out.read_text())
     assert "_enriched" in data[0]
     assert data[0]["_enriched"]["reviews"]["source"] == "flamp"
 

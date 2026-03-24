@@ -14,7 +14,7 @@ from src.core.browser import BrowserManager
 from src.core.config import load_config
 from src.core.matching import find_best_match, normalize_name
 from src.output.json_writer import save_json
-from src.output.naming import auto_path
+from src.output.naming import auto_path, named_path
 from src.output.progress import scraping_progress
 from src.tools.jobscout.models import Vacancy
 from src.tools.jobscout.scrapers.avito import AvitoJobScraper
@@ -43,7 +43,7 @@ app.add_typer(search_app, name="search")
 def search_hh(
     query: str = typer.Option(..., "--query", "-q", help="Поисковый запрос"),
     city: str = typer.Option(..., "--city", help="Город"),
-    output: Path = typer.Option(None, "--output", "-o", help="Путь к выходному файлу"),
+    output: str = typer.Option(None, "--output", "-o", help="Имя выходного файла (сохраняется в data/json/)"),
     max_results: int = typer.Option(50, "--max-results", "-n", help="Лимит результатов"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Подробный лог"),
     config_path: Path = typer.Option(None, "--config", "-c", help="Путь к config.yaml"),
@@ -63,7 +63,7 @@ def search_hh(
 def search_avito(
     query: str = typer.Option(..., "--query", "-q", help="Поисковый запрос"),
     city: str = typer.Option(..., "--city", help="Город"),
-    output: Path = typer.Option(None, "--output", "-o", help="Путь к выходному файлу"),
+    output: str = typer.Option(None, "--output", "-o", help="Имя выходного файла (сохраняется в data/json/)"),
     max_results: int = typer.Option(50, "--max-results", "-n", help="Лимит результатов"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Подробный лог"),
     config_path: Path = typer.Option(None, "--config", "-c", help="Путь к config.yaml"),
@@ -83,9 +83,9 @@ def search_avito(
 def enrich(
     input_file: Path = typer.Argument(help="JSON-файл организаций для обогащения вакансиями"),
     source: str = typer.Option("hh", "--source", "-s", help="Источник вакансий: hh"),
-    output: Path = typer.Option(
+    output: str = typer.Option(
         None, "--output", "-o",
-        help="Выходной файл (по умолчанию — перезаписать входной)",
+        help="Имя выходного файла в data/json/ (по умолчанию — перезаписать входной)",
     ),
     threshold: float = typer.Option(
         70.0, "--threshold", "-t",
@@ -112,12 +112,12 @@ def enrich(
 async def _run_search_hh(
     query: str,
     city: str,
-    output: Path | None,
+    output: str | None,
     max_results: int,
     config_path: Path | None,
 ) -> None:
     cfg = load_config(config_path)
-    out_path = output or auto_path("jobscout", city, query, "json")
+    out_path = named_path(output, "json") if output else auto_path("jobscout", city, query, "json")
 
     console.print(
         f"[bold]JobScout hh.ru[/bold] · запрос: [yellow]{query!r}[/yellow] · "
@@ -145,12 +145,12 @@ async def _run_search_hh(
 async def _run_search_avito(
     query: str,
     city: str,
-    output: Path | None,
+    output: str | None,
     max_results: int,
     config_path: Path | None,
 ) -> None:
     cfg = load_config(config_path)
-    out_path = output or auto_path("jobscout", city, query, "json")
+    out_path = named_path(output, "json") if output else auto_path("jobscout", city, query, "json")
 
     console.print(
         f"[bold]JobScout Avito[/bold] · запрос: [yellow]{query!r}[/yellow] · "
@@ -183,7 +183,7 @@ async def _run_search_avito(
 async def _run_enrich(
     input_file: Path,
     source: str,
-    output: Path | None,
+    output: str | None,
     threshold: float,
     max_per_org: int,
     config_path: Path | None,
@@ -260,7 +260,8 @@ async def _run_enrich(
             progress.advance(task_id)
 
     # Сохраняем результат
-    out_path = output or input_file
+    out_path = named_path(output, "json") if output else input_file
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(
         json.dumps(organizations, ensure_ascii=False, indent=2),
         encoding="utf-8",

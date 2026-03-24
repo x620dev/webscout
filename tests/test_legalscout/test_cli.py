@@ -81,9 +81,9 @@ def test_legal_search_rusprofile_no_args():
     assert result.exit_code != 0
 
 
-def test_legal_search_egrul_by_name(tmp_path):
+def test_legal_search_egrul_by_name(tmp_path, monkeypatch):
     """search egrul --name сохраняет результат в JSON."""
-    out = tmp_path / "legal.json"
+    monkeypatch.chdir(tmp_path)
     entity = make_entity()
 
     mock_scraper = AsyncMock()
@@ -94,10 +94,11 @@ def test_legal_search_egrul_by_name(tmp_path):
             "legal", "search", "egrul",
             "--name", "Колорстар",
             "--city", "Уфа",
-            "--output", str(out),
+            "--output", "legal.json",
         ])
 
     assert result.exit_code == 0, result.output
+    out = tmp_path / "data" / "json" / "legal.json"
     assert out.exists()
     data = json.loads(out.read_text())
     assert isinstance(data, list)
@@ -105,9 +106,9 @@ def test_legal_search_egrul_by_name(tmp_path):
     assert data[0]["inn"] == "0277123456"
 
 
-def test_legal_search_egrul_by_inn(tmp_path):
+def test_legal_search_egrul_by_inn(tmp_path, monkeypatch):
     """search egrul --inn сохраняет результат в JSON."""
-    out = tmp_path / "legal.json"
+    monkeypatch.chdir(tmp_path)
     entity = make_entity()
 
     mock_scraper = AsyncMock()
@@ -117,16 +118,16 @@ def test_legal_search_egrul_by_inn(tmp_path):
         result = runner.invoke(app, [
             "legal", "search", "egrul",
             "--inn", "0277123456",
-            "--output", str(out),
+            "--output", "legal.json",
         ])
 
     assert result.exit_code == 0, result.output
-    assert out.exists()
+    assert (tmp_path / "data" / "json" / "legal.json").exists()
 
 
-def test_legal_search_rusprofile_runs(tmp_path):
+def test_legal_search_rusprofile_runs(tmp_path, monkeypatch):
     """search rusprofile --name сохраняет результат в JSON."""
-    out = tmp_path / "legal.json"
+    monkeypatch.chdir(tmp_path)
     entity = make_entity(source="rusprofile", source_url="https://www.rusprofile.ru/id/12345")
 
     mock_scraper = AsyncMock()
@@ -143,10 +144,11 @@ def test_legal_search_rusprofile_runs(tmp_path):
         result = runner.invoke(app, [
             "legal", "search", "rusprofile",
             "--name", "Колорстар",
-            "--output", str(out),
+            "--output", "legal.json",
         ])
 
     assert result.exit_code == 0, result.output
+    out = tmp_path / "data" / "json" / "legal.json"
     assert out.exists()
     data = json.loads(out.read_text())
     assert len(data) == 1
@@ -216,10 +218,10 @@ def test_legal_enrich_unknown_source(tmp_path):
     assert result.exit_code != 0
 
 
-def test_legal_enrich_egrul(tmp_path):
+def test_legal_enrich_egrul(tmp_path, monkeypatch):
     """enrich обогащает организации юрданными из ЕГРЮЛ."""
+    monkeypatch.chdir(tmp_path)
     input_file = tmp_path / "orgs.json"
-    out_file = tmp_path / "enriched.json"
 
     orgs = [
         {"name": 'ООО "КОЛОРСТАР"', "city": "Уфа"},
@@ -235,12 +237,13 @@ def test_legal_enrich_egrul(tmp_path):
         result = runner.invoke(app, [
             "legal", "enrich", str(input_file),
             "--source", "egrul",
-            "--output", str(out_file),
+            "--output", "enriched.json",
         ])
 
     assert result.exit_code == 0, result.output
-    assert out_file.exists()
-    data = json.loads(out_file.read_text())
+    out = tmp_path / "data" / "json" / "enriched.json"
+    assert out.exists()
+    data = json.loads(out.read_text())
 
     # Первая организация обогащена (fuzzy match "Колорстар" ↔ "Колорстар")
     assert "_enriched" in data[0]
@@ -291,10 +294,10 @@ def test_legal_enrich_overwrites_input_by_default(tmp_path):
     assert input_file.exists()
 
 
-def test_legal_enrich_rusprofile(tmp_path):
+def test_legal_enrich_rusprofile(tmp_path, monkeypatch):
     """enrich обогащает организации юрданными из Rusprofile."""
+    monkeypatch.chdir(tmp_path)
     input_file = tmp_path / "orgs.json"
-    out_file = tmp_path / "enriched.json"
 
     orgs = [{"name": 'ООО "КОЛОРСТАР"', "city": "Уфа"}]
     input_file.write_text(json.dumps(orgs, ensure_ascii=False), encoding="utf-8")
@@ -314,11 +317,12 @@ def test_legal_enrich_rusprofile(tmp_path):
         result = runner.invoke(app, [
             "legal", "enrich", str(input_file),
             "--source", "rusprofile",
-            "--output", str(out_file),
+            "--output", "enriched.json",
         ])
 
     assert result.exit_code == 0, result.output
-    data = json.loads(out_file.read_text())
+    out = tmp_path / "data" / "json" / "enriched.json"
+    data = json.loads(out.read_text())
     assert "_enriched" in data[0]
     assert data[0]["_enriched"]["legal"]["source"] == "rusprofile"
 

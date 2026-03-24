@@ -13,7 +13,7 @@ from src.core.browser import BrowserManager
 from src.core.config import load_config
 from src.output.csv_writer import save_csv
 from src.output.json_writer import save_json
-from src.output.naming import auto_path
+from src.output.naming import auto_path, named_path
 from src.output.partial import get_seen_urls, load_existing, save_partial
 from src.output.progress import scraping_progress
 from src.tools.orgscout.models import Organization
@@ -65,7 +65,7 @@ def _common_scrape_opts(
 def scrape_yandex_maps(
     query: str = typer.Option(..., "--query", "-q", help="Поисковый запрос"),
     city: str = typer.Option(..., "--city", help="Город"),
-    output: Path = typer.Option(None, "--output", "-o", help="Путь к выходному файлу"),
+    output: str = typer.Option(None, "--output", "-o", help="Имя выходного файла (json→data/json/, ai-summary→data/ai/)"),
     fmt: str = typer.Option("json", "--format", "-f", help="Формат: json, ai-summary"),
     max_results: int = typer.Option(50, "--max-results", "-n", help="Лимит результатов"),
     csv_flag: bool = typer.Option(False, "--csv", help="Дополнительно сохранить TSV"),
@@ -101,7 +101,7 @@ def scrape_yandex_maps(
 def scrape_2gis(
     query: str = typer.Option(..., "--query", "-q", help="Поисковый запрос"),
     city: str = typer.Option(..., "--city", help="Город"),
-    output: Path = typer.Option(None, "--output", "-o", help="Путь к выходному файлу"),
+    output: str = typer.Option(None, "--output", "-o", help="Имя выходного файла (json→data/json/, ai-summary→data/ai/)"),
     fmt: str = typer.Option("json", "--format", "-f", help="Формат: json, ai-summary"),
     max_results: int = typer.Option(50, "--max-results", "-n", help="Лимит результатов"),
     csv_flag: bool = typer.Option(False, "--csv", help="Дополнительно сохранить TSV"),
@@ -136,7 +136,7 @@ def scrape_2gis(
 @fetch_app.command(name="yandex-maps")
 def fetch_yandex_maps(
     org_url: str = typer.Option(..., "--org-url", help="URL карточки организации"),
-    output: Path = typer.Option(None, "--output", "-o", help="Путь к выходному файлу"),
+    output: str = typer.Option(None, "--output", "-o", help="Имя выходного файла (сохраняется в data/json/)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Подробный лог"),
     config_path: Path = typer.Option(None, "--config", "-c", help="Путь к config.yaml"),
 ) -> None:
@@ -154,7 +154,7 @@ def fetch_yandex_maps(
 @fetch_app.command(name="2gis")
 def fetch_2gis(
     org_url: str = typer.Option(..., "--org-url", help="URL карточки организации"),
-    output: Path = typer.Option(None, "--output", "-o", help="Путь к выходному файлу"),
+    output: str = typer.Option(None, "--output", "-o", help="Имя выходного файла (сохраняется в data/json/)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Подробный лог"),
     config_path: Path = typer.Option(None, "--config", "-c", help="Путь к config.yaml"),
 ) -> None:
@@ -173,7 +173,7 @@ async def _run_scrape(
     source: str,
     query: str,
     city: str,
-    output: Path | None,
+    output: str | None,
     fmt: str,
     max_results: int,
     csv_flag: bool,
@@ -182,7 +182,7 @@ async def _run_scrape(
     config_path: Path | None,
 ) -> None:
     cfg = load_config(config_path)
-    out_path = output or auto_path("orgscout", city, query, fmt)
+    out_path = named_path(output, fmt) if output else auto_path("orgscout", city, query, fmt)
 
     console.print(
         f"[bold]OrgScout[/bold] · источник: [cyan]{source}[/cyan] · "
@@ -192,8 +192,8 @@ async def _run_scrape(
     # Режим --append: загружаем существующий файл
     existing: list[dict] = []
     seen_urls: set[str] = set()
-    if append and output and output.exists():
-        existing = load_existing(output)
+    if append and out_path.exists():
+        existing = load_existing(out_path)
         seen_urls = get_seen_urls(existing)
         console.print(f"[dim]Дозапуск: загружено {len(existing)} существующих записей.[/dim]")
 
@@ -241,7 +241,7 @@ async def _run_scrape(
         save_json(results, out_path)
 
     if csv_flag:
-        csv_path = out_path.with_suffix(".tsv")
+        csv_path = named_path(out_path.stem, "csv")
         save_csv(results, csv_path)
         console.print(f"[green]TSV:[/green] {csv_path}")
 
@@ -259,7 +259,7 @@ async def _run_scrape(
 async def _run_fetch(
     source: str,
     org_url: str,
-    output: Path | None,
+    output: str | None,
     config_path: Path | None,
 ) -> None:
     cfg = load_config(config_path)
@@ -283,8 +283,9 @@ async def _run_fetch(
     console.print(f"[green]Получено:[/green] {org.name}")
 
     if output:
-        save_json([org], output)
-        console.print(f"[green]Сохранено:[/green] {output}")
+        out_path = named_path(output, "json")
+        save_json([org], out_path)
+        console.print(f"[green]Сохранено:[/green] {out_path}")
     else:
         import json
         console.print(json.dumps(org.model_dump(mode="json"), ensure_ascii=False, indent=2))

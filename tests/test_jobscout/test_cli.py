@@ -51,9 +51,9 @@ def test_jobs_search_hh_missing_city():
     assert result.exit_code != 0
 
 
-def test_jobs_search_hh_runs(tmp_path):
+def test_jobs_search_hh_runs(tmp_path, monkeypatch):
     """search hh выполняется и сохраняет результат в JSON."""
-    out = tmp_path / "vacancies.json"
+    monkeypatch.chdir(tmp_path)
     vacancies = [make_vacancy()]
 
     mock_scraper = AsyncMock()
@@ -64,19 +64,20 @@ def test_jobs_search_hh_runs(tmp_path):
             "jobs", "search", "hh",
             "--query", "маникюр",
             "--city", "Уфа",
-            "--output", str(out),
+            "--output", "vacancies.json",
         ])
 
     assert result.exit_code == 0, result.output
+    out = tmp_path / "data" / "json" / "vacancies.json"
     assert out.exists()
     data = json.loads(out.read_text())
     assert len(data) == 1
     assert data[0]["title"] == "Мастер маникюра"
 
 
-def test_jobs_search_hh_empty_result(tmp_path):
+def test_jobs_search_hh_empty_result(tmp_path, monkeypatch):
     """search hh сохраняет пустой массив при отсутствии вакансий."""
-    out = tmp_path / "vacancies.json"
+    monkeypatch.chdir(tmp_path)
 
     mock_scraper = AsyncMock()
     mock_scraper.search = AsyncMock(return_value=[])
@@ -86,10 +87,11 @@ def test_jobs_search_hh_empty_result(tmp_path):
             "jobs", "search", "hh",
             "--query", "ничегонет",
             "--city", "Уфа",
-            "--output", str(out),
+            "--output", "vacancies.json",
         ])
 
     assert result.exit_code == 0, result.output
+    out = tmp_path / "data" / "json" / "vacancies.json"
     assert out.exists()
     assert json.loads(out.read_text()) == []
 
@@ -104,9 +106,9 @@ def test_jobs_search_avito_help():
     assert "--query" in result.output
 
 
-def test_jobs_search_avito_runs(tmp_path):
+def test_jobs_search_avito_runs(tmp_path, monkeypatch):
     """search avito выполняется и сохраняет результат."""
-    out = tmp_path / "avito_vacancies.json"
+    monkeypatch.chdir(tmp_path)
     vacancies = [make_vacancy(source="avito", source_url="https://avito.ru/ufa/1")]
 
     mock_scraper = AsyncMock()
@@ -124,11 +126,11 @@ def test_jobs_search_avito_runs(tmp_path):
             "jobs", "search", "avito",
             "--query", "маникюр",
             "--city", "Уфа",
-            "--output", str(out),
+            "--output", "avito_vacancies.json",
         ])
 
     assert result.exit_code == 0, result.output
-    assert out.exists()
+    assert (tmp_path / "data" / "json" / "avito_vacancies.json").exists()
 
 
 # ─── jobs enrich ──────────────────────────────────────────────────────────────
@@ -178,10 +180,10 @@ def test_jobs_enrich_unknown_source(tmp_path):
     assert result.exit_code != 0
 
 
-def test_jobs_enrich_adds_vacancies(tmp_path):
+def test_jobs_enrich_adds_vacancies(tmp_path, monkeypatch):
     """enrich добавляет вакансии к организациям через fuzzy matching."""
+    monkeypatch.chdir(tmp_path)
     input_file = tmp_path / "orgs.json"
-    out_file = tmp_path / "enriched.json"
 
     orgs = [
         {"name": "Студия Colorstar", "city": "Уфа"},
@@ -202,13 +204,14 @@ def test_jobs_enrich_adds_vacancies(tmp_path):
     with patch("src.tools.jobscout.cli.HhScraper", return_value=mock_scraper):
         result = runner.invoke(app, [
             "jobs", "enrich", str(input_file),
-            "--output", str(out_file),
+            "--output", "enriched.json",
             "--threshold", "70",
         ])
 
     assert result.exit_code == 0, result.output
-    assert out_file.exists()
-    data = json.loads(out_file.read_text())
+    out = tmp_path / "data" / "json" / "enriched.json"
+    assert out.exists()
+    data = json.loads(out.read_text())
 
     # Первая org должна быть обогащена
     assert "_enriched" in data[0]

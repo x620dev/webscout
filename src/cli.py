@@ -55,7 +55,7 @@ app.add_typer(legal_app, name="legal")
 @app.command()
 def render(
     url: str = typer.Argument(help="URL страницы для рендеринга"),
-    output: Path = typer.Option(None, "--output", "-o", help="Файл для сохранения результата"),
+    output: str = typer.Option(None, "--output", "-o", help="Имя выходного файла (сохраняется в data/)"),
     fmt: OutputFormat = typer.Option(OutputFormat.HTML, "--format", "-f", help="Формат: html или text"),
     wait_for: str = typer.Option(None, "--wait-for", "-w", help="CSS-селектор для ожидания загрузки"),
     config_path: Path = typer.Option(None, "--config", "-c", help="Путь к config.yaml"),
@@ -70,7 +70,7 @@ def render(
 
 async def _render(
     url: str,
-    output: Path | None,
+    output: str | None,
     fmt: OutputFormat,
     wait_for: str | None,
     config_path: Path | None,
@@ -98,16 +98,17 @@ async def _render(
         console.print(f"[green]Перехвачено API-ответов:[/green] {len(result.intercepted_responses)}")
 
     if output:
-        output.parent.mkdir(parents=True, exist_ok=True)
+        out_path = Path("data") / output
+        out_path.parent.mkdir(parents=True, exist_ok=True)
         if intercept and result.intercepted_responses:
-            intercept_path = output.with_suffix(".intercepted.json")
+            intercept_path = out_path.with_suffix(".intercepted.json")
             intercept_path.write_text(
                 json.dumps(result.intercepted_responses, ensure_ascii=False, indent=2),
                 encoding="utf-8",
             )
             console.print(f"[green]Перехваченные ответы сохранены:[/green] {intercept_path}")
-        output.write_text(result.content, encoding="utf-8")
-        console.print(f"[green]Сохранено:[/green] {output}")
+        out_path.write_text(result.content, encoding="utf-8")
+        console.print(f"[green]Сохранено:[/green] {out_path}")
     else:
         console.print(result.content)
 
@@ -120,7 +121,7 @@ async def _render(
 @app.command()
 def merge(
     files: list[Path] = typer.Argument(help="JSON-файлы для объединения (минимум 2)"),
-    output: Path = typer.Option(None, "--output", "-o", help="Путь к выходному файлу"),
+    output: str = typer.Option(None, "--output", "-o", help="Имя выходного файла (сохраняется в data/json/)"),
     threshold: float = typer.Option(80.0, "--threshold", "-t", help="Порог схожести для дедупликации (0–100)"),
     name_key: str = typer.Option("name", "--name-key", help="Поле с названием организации"),
     city_key: str = typer.Option("city", "--city-key", help="Поле с городом (для фильтрации дублей)"),
@@ -157,16 +158,15 @@ def merge(
     console.print(f"Удалено дублей: [yellow]{removed}[/yellow]. Осталось: [bold]{len(deduped)}[/bold]")
 
     # Сохранение
-    if output is None:
-        from src.output.naming import auto_path
-        output = auto_path("merge", "all", "merged", "json")
+    from src.output.naming import auto_path, named_path
+    out_path = named_path(output, "json") if output else auto_path("merge", "all", "merged", "json")
 
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(
         json.dumps(deduped, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
-    console.print(f"[green]Сохранено:[/green] {output}")
+    console.print(f"[green]Сохранено:[/green] {out_path}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
