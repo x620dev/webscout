@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any
+from typing import Any, AsyncIterator
 from urllib.parse import quote
 
 from playwright.async_api import BrowserContext, Page, Response
@@ -110,16 +110,16 @@ class TwoGisScraper:
         query: str,
         city: str,
         max_results: int | None = None,
-    ) -> list[Organization]:
-        """Собрать организации из 2ГИС по запросу.
+    ) -> AsyncIterator[Organization]:
+        """Собрать организации из 2ГИС по запросу (async generator).
 
         Args:
             query: Поисковый запрос, например «маникюр».
             city: Город, например «Уфа».
             max_results: Лимит результатов (None = из конфига).
 
-        Returns:
-            Список организаций.
+        Yields:
+            Организации по мере их получения.
         """
         limit = max_results or self._config.max_results
         city_slug = get_city_slug(city)
@@ -127,7 +127,8 @@ class TwoGisScraper:
 
         page = await self._context.new_page()
         try:
-            return await self._scrape_search(page, url, limit)
+            async for org in self._scrape_search(page, url, limit):
+                yield org
         finally:
             await page.close()
 
@@ -180,7 +181,9 @@ class TwoGisScraper:
     # Внутренние методы
     # ─────────────────────────────────────────────────────────────────────────
 
-    async def _scrape_search(self, page: Page, url: str, limit: int) -> list[Organization]:
+    async def _scrape_search(
+        self, page: Page, url: str, limit: int
+    ) -> AsyncIterator[Organization]:
         """Основная логика: открыть поиск 2ГИС, перехватить API, прокрутить."""
         items: list[dict] = []
         _attach_interceptor(page, items)
@@ -197,9 +200,9 @@ class TwoGisScraper:
             if self._config.retry_on_captcha:
                 solved = await wait_for_captcha_solve(page, self._config.captcha_timeout)
                 if not solved:
-                    return []
+                    return
             else:
-                return []
+                return
 
         # Прокручиваем страницу для загрузки дополнительных результатов
         prev_count = -1
@@ -222,19 +225,18 @@ class TwoGisScraper:
 
         logger.info("2ГИС: перехвачено %d элементов API.", len(items))
 
-        # Парсим собранные данные, дедуплицируем по URL
-        results: list[Organization] = []
+        # Парсим собранные данные, дедуплицируем по URL, отдаём по одной
         seen: set[str] = set()
+        count = 0
 
         for item in items:
             org = parse_api_item(item)
             if org and org.source_url not in seen:
                 seen.add(org.source_url)
-                results.append(org)
-                if len(results) >= limit:
+                yield org
+                count += 1
+                if count >= limit:
                     break
-
-        return results
 
 
 # ─────────────────────────────────────────────────────────────────────────────

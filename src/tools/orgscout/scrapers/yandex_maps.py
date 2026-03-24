@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
+from typing import AsyncIterator
 from urllib.parse import quote
 
 from playwright.async_api import BrowserContext, Page
@@ -22,18 +23,22 @@ logger = logging.getLogger(__name__)
 BASE_URL = "https://yandex.ru/maps/"
 
 # CSS-селекторы Яндекс.Карт.
-# Яндекс использует CSS-модули с нестабильными именами; здесь указаны
-# наиболее устойчивые варианты. При изменении DOM обновляйте только эту секцию.
-_SEL_RESULTS_LIST = "[class*='serp-list']"
-_SEL_RESULT_LINK = "[class*='serp-item'] a[href*='/maps/org/'], [class*='search-snippet'] a[href*='/org/']"
-_SEL_NAME = "[class*='orgpage-header-view__name'], [class*='business-card-title__name']"
-_SEL_CATEGORY = "[class*='orgpage-header-view__categories'] a, [class*='business-card-title__category']"
-_SEL_ADDRESS = "[class*='orgpage-contacts__address'], [class*='business-card-contacts-view__address']"
-_SEL_PHONE = "[class*='contact-item_type_phone'] a[href^='tel:']"
-_SEL_WEBSITE = "[class*='contact-item_type_link'] a[class*='link_theme_outer']"
-_SEL_RATING = "[class*='business-rating-badge__rating'], [class*='business-reviews-badge-view__rating']"
-_SEL_REVIEWS_COUNT = "[class*='business-rating-badge__count'], [class*='business-reviews-badge-view__count']"
-_SEL_HOURS = "[class*='business-work-status-view__text'], [class*='orgpage-schedule-view']"
+# При изменении DOM обновляйте только эту секцию.
+
+# Ждём появления хотя бы одного снипета организации в сайдбаре
+_SEL_RESULTS_LIST = ".search-business-snippet-view"
+# Ссылки на карточки организаций (все на странице, дедупликация по Set)
+_SEL_RESULT_LINK = "a[href*='/maps/org/']"
+
+# Селекторы страницы карточки организации
+_SEL_NAME = "h1.orgpage-header-view__header, [itemprop='name']"
+_SEL_CATEGORY = "[class*='orgpage-header-view__categories'] a, [class*='business-rubric-view']"
+_SEL_ADDRESS = ".business-contacts-view__address, [class*='orgpage-contacts__address']"
+_SEL_PHONE = "a[href^='tel:']"
+_SEL_WEBSITE = ".business-contacts-view__link[href^='http'], a[class*='business-url-view']"
+_SEL_RATING = ".business-header-rating-view, .business-rating-badge-view__rating"
+_SEL_REVIEWS_COUNT = ".business-rating-amount-view, [class*='business-reviews-badge-view__count']"
+_SEL_HOURS = ".business-card-working-status-view__text, [class*='orgpage-schedule-view']"
 _SEL_BOOKING_YCLIENTS = "a[href*='yclients.com']"
 _SEL_BOOKING_DIKIDI = "a[href*='dikidi.net']"
 
@@ -70,23 +75,24 @@ class YandexMapsScraper:
         query: str,
         city: str,
         max_results: int | None = None,
-    ) -> list[Organization]:
-        """Собрать организации по запросу.
+    ) -> AsyncIterator[Organization]:
+        """Собрать организации по запросу (async generator).
 
         Args:
             query: Поисковый запрос, например «маникюр».
             city: Город, например «Уфа».
             max_results: Лимит результатов (None = из конфига).
 
-        Returns:
-            Список организаций.
+        Yields:
+            Организации по мере их получения.
         """
         limit = max_results or self._config.max_results
         url = f"{BASE_URL}?text={quote(f'{query} {city}')}"
 
         page = await self._context.new_page()
         try:
-            return await self._scrape_search(page, url, limit)
+            async for org in self._scrape_search(page, url, limit):
+                yield org
         finally:
             await page.close()
 
@@ -103,9 +109,20 @@ class YandexMapsScraper:
         try:
             await page.goto(
                 org_url,
-                wait_until="networkidle",
+                wait_until="domcontentloaded",
                 timeout=self._config.page_load_timeout * 1000,
             )
+
+            # Ждём пока React отрендерит карточку (данные грузятся через API)
+            try:
+                await page.wait_for_selector(
+                    ".business-card-view",
+                    timeout=self._config.page_load_timeout * 1000,
+                )
+            except Exception:
+                logger.warning("Карточка не отрендерилась: %s", org_url)
+                return None
+
             await random_delay(self._config.delay_min, self._config.delay_max)
 
             if await detect_captcha(page):
@@ -128,12 +145,14 @@ class YandexMapsScraper:
     # Внутренние методы
     # ─────────────────────────────────────────────────────────────────────────
 
-    async def _scrape_search(self, page: Page, url: str, limit: int) -> list[Organization]:
-        """Открыть страницу поиска, прокрутить и собрать организации."""
+    async def _scrape_search(
+        self, page: Page, url: str, limit: int
+    ) -> AsyncIterator[Organization]:
+        """Открыть страницу поиска, прокрутить и отдавать организации по одной."""
         logger.info("Яндекс.Карты: открываем %s", url)
         await page.goto(
             url,
-            wait_until="networkidle",
+            wait_until="domcontentloaded",
             timeout=self._config.page_load_timeout * 1000,
         )
         await random_delay(self._config.delay_min, self._config.delay_max)
@@ -142,9 +161,9 @@ class YandexMapsScraper:
             if self._config.retry_on_captcha:
                 solved = await wait_for_captcha_solve(page, self._config.captcha_timeout)
                 if not solved:
-                    return []
+                    return
             else:
-                return []
+                return
 
         # Ждём появления списка результатов
         try:
@@ -154,21 +173,18 @@ class YandexMapsScraper:
             )
         except Exception:
             logger.warning("Список результатов не найден. URL: %s", url)
-            return []
+            return
 
         # Собираем URL карточек организаций
         org_urls = await self._collect_card_urls(page, limit)
         logger.info("Яндекс.Карты: найдено %d ссылок.", len(org_urls))
 
-        # Парсим каждую карточку
-        results: list[Organization] = []
+        # Парсим каждую карточку и отдаём сразу
         for card_url in org_urls:
             org = await self.fetch(card_url)
             if org:
-                results.append(org)
+                yield org
             await random_delay(self._config.delay_min, self._config.delay_max)
-
-        return results
 
     async def _collect_card_urls(self, page: Page, limit: int) -> list[str]:
         """Прокрутить список результатов и собрать URL карточек.
@@ -179,14 +195,18 @@ class YandexMapsScraper:
         seen: set[str] = set()
         stale_count = 0
 
-        for _ in range(_MAX_SCROLL_ATTEMPTS):
+        for attempt in range(_MAX_SCROLL_ATTEMPTS):
             links: list[str] = await page.eval_on_selector_all(
                 _SEL_RESULT_LINK,
-                "els => [...new Set(els.map(el => el.href))].filter(h => h.includes('/org/'))",
+                "els => [...new Set(els.map(el => el.href))].filter(h => h.includes('/maps/org/'))",
             )
+            snippet_count = await page.locator(".search-business-snippet-view").count()
+            logger.debug("Итерация %d: снипетов=%d, ссылок=%d", attempt, snippet_count, len(links))
             new_found = False
             for link in links:
-                clean = link.split("?")[0]  # убрать query-параметры
+                # Нормализовать до базового URL организации: /maps/org/slug/id/
+                m = re.match(r"(https?://[^/]+/maps/org/[^/]+/\d+/)", link)
+                clean = m.group(1) if m else link.split("?")[0]
                 if clean not in seen:
                     seen.add(clean)
                     urls.append(clean)
@@ -197,16 +217,14 @@ class YandexMapsScraper:
 
             if not new_found:
                 stale_count += 1
-                if stale_count >= 3:
+                if stale_count >= 5:
                     break
             else:
                 stale_count = 0
 
-            # Прокрутить панель с результатами
-            await page.eval_on_selector(
-                _SEL_RESULTS_LIST,
-                "el => el.scrollBy(0, 600)",
-            )
+            # Прокрутить через mouse.wheel над областью сайдбара
+            await page.mouse.move(200, 500)
+            await page.mouse.wheel(0, 1200)
             await random_delay(self._config.scroll_pause, self._config.scroll_pause + 1.0)
 
         return urls[:limit]

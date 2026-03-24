@@ -38,6 +38,12 @@ class BrowserManager:
         if self._proxy and self._proxy.enabled and self._proxy.url:
             launch_kwargs["proxy"] = {"server": self._proxy.url}
 
+        launch_kwargs["args"] = [
+            "--disable-blink-features=AutomationControlled",
+            "--disable-infobars",
+            "--no-first-run",
+        ]
+
         self._browser = await self._playwright.chromium.launch(**launch_kwargs)
 
     async def stop(self) -> None:
@@ -71,7 +77,12 @@ class BrowserManager:
             defaults["user_agent"] = get_random_user_agent()
 
         defaults.update(overrides)
-        return await self._browser.new_context(**defaults)
+        ctx = await self._browser.new_context(**defaults)
+        # Скрыть признаки автоматизации: убрать navigator.webdriver
+        await ctx.add_init_script(
+            "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+        )
+        return ctx
 
     @property
     def browser(self) -> Browser | None:

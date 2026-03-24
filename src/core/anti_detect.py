@@ -23,18 +23,20 @@ _USER_AGENTS: list[str] = [
     "Mozilla/5.0 (X11; Linux x86_64; rv:132.0) Gecko/20100101 Firefox/132.0",
 ]
 
-# Ключевые слова для обнаружения страниц-капч
-_CAPTCHA_KEYWORDS: list[str] = [
-    "captcha",
-    "capcha",
-    "recaptcha",
-    "i am not a robot",
-    "я не робот",
-    "роботов",
-    "подтвердите, что вы",
-    "проверка безопасности",
-    "access denied",
-    "robot check",
+# CSS-селекторы капчи (проверяем наличие конкретного элемента, а не ключевые слова)
+_CAPTCHA_SELECTORS: list[str] = [
+    "#captcha-form",
+    ".captcha",
+    "[class*='CheckboxCaptcha']",
+    "[class*='captcha']",
+    "input[name='rep']",  # Яндекс SmartCaptcha
+]
+
+# URL-маркеры страниц капчи
+_CAPTCHA_URL_MARKERS: list[str] = [
+    "/showcaptcha",
+    "captcha.yandex",
+    "smartcaptcha",
 ]
 
 
@@ -83,14 +85,21 @@ async def human_scroll(
 async def detect_captcha(page: Page) -> bool:
     """Проверить, отображается ли на странице капча.
 
-    Ищет ключевые слова в HTML-контенте страницы.
+    Проверяет URL страницы и наличие специфичных элементов капчи.
+    Не использует ключевые слова в тексте — они дают ложные срабатывания
+    на обычных страницах Яндекса.
 
     Returns:
         True если капча обнаружена.
     """
     try:
-        content = (await page.content()).lower()
-        return any(kw in content for kw in _CAPTCHA_KEYWORDS)
+        url = page.url.lower()
+        if any(marker in url for marker in _CAPTCHA_URL_MARKERS):
+            return True
+        for selector in _CAPTCHA_SELECTORS:
+            if await page.locator(selector).count() > 0:
+                return True
+        return False
     except Exception as exc:
         logger.debug("Ошибка при проверке капчи: %s", exc)
         return False

@@ -12,7 +12,7 @@ scraping:
   delay_max: 3.0
   max_results: 500
   scroll_pause: 2.0
-  page_load_timeout: 30
+  page_load_timeout: 60
   retry_on_captcha: true
   captcha_timeout: 120
 

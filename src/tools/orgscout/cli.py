@@ -209,8 +209,7 @@ async def _run_scrape(
                 scraper = TwoGisScraper(ctx, cfg.scraping)
 
             with scraping_progress(f"Скрапинг {source}", total=max_results) as (progress, task_id):
-                raw = await scraper.scrape(query, city, max_results=max_results)
-                for org in raw:
+                async for org in scraper.scrape(query, city, max_results=max_results):
                     if org.source_url in seen_urls:
                         if verbose:
                             console.print(f"[dim]Пропуск (уже есть): {org.source_url}[/dim]")
