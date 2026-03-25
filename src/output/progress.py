@@ -14,7 +14,7 @@ from rich.progress import (
     TaskID,
     TaskProgressColumn,
     TextColumn,
-    TimeRemainingColumn,
+    TimeElapsedColumn,
 )
 
 # Консоль для прогресс-бара (stderr, чтобы не мешать pipe/redirect)
@@ -30,7 +30,7 @@ def make_progress() -> Progress:
         MofNCompleteColumn(),
         TaskProgressColumn(),
         TextColumn("• Ошибки: [red]{task.fields[errors]}[/red]"),
-        TimeRemainingColumn(),
+        TimeElapsedColumn(),
         console=_err_console,
         transient=False,
     )
