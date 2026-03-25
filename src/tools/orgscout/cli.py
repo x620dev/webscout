@@ -70,6 +70,7 @@ def scrape_yandex_maps(
     max_results: int = typer.Option(50, "--max-results", "-n", help="Лимит результатов"),
     csv_flag: bool = typer.Option(False, "--csv", help="Дополнительно сохранить TSV"),
     append: bool = typer.Option(False, "--append", help="Дозапуск: дописать к существующему файлу"),
+    headful: bool = typer.Option(False, "--headful", help="Показать браузер (нужно для ручного решения капчи)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Подробный лог"),
     config_path: Path = typer.Option(None, "--config", "-c", help="Путь к config.yaml"),
 ) -> None:
@@ -86,6 +87,7 @@ def scrape_yandex_maps(
             max_results=max_results,
             csv_flag=csv_flag,
             append=append,
+            headful=headful,
             verbose=verbose,
             config_path=config_path,
         )
@@ -106,6 +108,7 @@ def scrape_2gis(
     max_results: int = typer.Option(50, "--max-results", "-n", help="Лимит результатов"),
     csv_flag: bool = typer.Option(False, "--csv", help="Дополнительно сохранить TSV"),
     append: bool = typer.Option(False, "--append", help="Дозапуск: дописать к существующему файлу"),
+    headful: bool = typer.Option(False, "--headful", help="Показать браузер (нужно для ручного решения капчи)"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Подробный лог"),
     config_path: Path = typer.Option(None, "--config", "-c", help="Путь к config.yaml"),
 ) -> None:
@@ -122,6 +125,7 @@ def scrape_2gis(
             max_results=max_results,
             csv_flag=csv_flag,
             append=append,
+            headful=headful,
             verbose=verbose,
             config_path=config_path,
         )
@@ -178,10 +182,13 @@ async def _run_scrape(
     max_results: int,
     csv_flag: bool,
     append: bool,
+    headful: bool,
     verbose: bool,
     config_path: Path | None,
 ) -> None:
     cfg = load_config(config_path)
+    if headful:
+        cfg.browser.headless = False
     out_path = named_path(output, fmt) if output else auto_path("orgscout", city, query, fmt)
 
     console.print(

@@ -34,8 +34,8 @@ _SEL_RESULT_LINK = "a[href*='/maps/org/']"
 _SEL_NAME = "h1.orgpage-header-view__header, [itemprop='name']"
 _SEL_CATEGORY = "[class*='orgpage-header-view__categories'] a, [class*='business-rubric-view']"
 _SEL_ADDRESS = ".business-contacts-view__address, [class*='orgpage-contacts__address']"
-_SEL_PHONE = "a[href^='tel:']"
-_SEL_WEBSITE = ".business-contacts-view__link[href^='http'], a[class*='business-url-view']"
+# Кнопка «Показать телефон» — реальный класс из DOM Яндекс.Карт
+_SEL_SHOW_PHONE_BTN = "[class*='card-phones-view__more-wrapper'][role='button']"
 _SEL_RATING = ".business-header-rating-view, .business-rating-badge-view__rating"
 _SEL_REVIEWS_COUNT = ".business-rating-amount-view, [class*='business-reviews-badge-view__count']"
 _SEL_HOURS = ".business-card-working-status-view__text, [class*='orgpage-schedule-view']"
@@ -113,10 +113,11 @@ class YandexMapsScraper:
                 timeout=self._config.page_load_timeout * 1000,
             )
 
-            # Ждём пока React отрендерит карточку (данные грузятся через API)
+            # Ждём пока React отрендерит карточку (данные грузятся через API).
+            # Используем itemprop='name' — стабильный Schema.org атрибут заголовка.
             try:
                 await page.wait_for_selector(
-                    ".business-card-view",
+                    "[itemprop='name'], h1[class*='orgpage-header']",
                     timeout=self._config.page_load_timeout * 1000,
                 )
             except Exception:
@@ -237,14 +238,13 @@ class YandexMapsScraper:
             return None
 
         categories = await self._texts(page, _SEL_CATEGORY)
-        address = await self._text(page, _SEL_ADDRESS) or ""
+        address = await self._get_address(page)
 
-        phones: list[str] = await page.eval_on_selector_all(
-            _SEL_PHONE,
-            "els => els.map(el => el.href.replace('tel:', '').trim()).filter(Boolean)",
-        )
+        # Скроллим к блоку телефонов: lazy-рендеринг показывает номер только во viewport
+        await self._scroll_to_contacts(page)
 
-        website = await self._attr(page, _SEL_WEBSITE, "href")
+        contacts = await self._get_contacts(page)
+
         rating = await self._parse_rating(page, _SEL_RATING)
         reviews_count = await self._parse_count(page, _SEL_REVIEWS_COUNT)
         working_hours = await self._text(page, _SEL_HOURS)
@@ -264,7 +264,7 @@ class YandexMapsScraper:
             categories=categories,
             address=address.strip(),
             geo=geo,
-            contacts=Contacts(phone=phones, website=website),
+            contacts=contacts,
             rating=rating,
             reviews_count=reviews_count,
             working_hours=working_hours,
@@ -310,6 +310,177 @@ class YandexMapsScraper:
         except Exception:
             pass
         return None
+
+    async def _first_href(self, page: Page, selector: str) -> str | None:
+        """Вернуть href первой ссылки, видимой на странице."""
+        try:
+            els = page.locator(selector)
+            count = await els.count()
+            for i in range(count):
+                el = els.nth(i)
+                try:
+                    if await el.is_visible(timeout=1000):
+                        return await el.get_attribute("href")
+                except Exception:
+                    continue
+        except Exception:
+            pass
+        return None
+
+    async def _first_href_excluding(
+        self, page: Page, selector: str, exclude: list[str]
+    ) -> str | None:
+        """Вернуть href первой ссылки, не содержащей исключённые домены."""
+        try:
+            els = page.locator(selector)
+            count = await els.count()
+            for i in range(count):
+                el = els.nth(i)
+                try:
+                    if await el.is_visible(timeout=1000):
+                        href = await el.get_attribute("href") or ""
+                        if href and not any(ex in href for ex in exclude):
+                            return href
+                except Exception:
+                    continue
+        except Exception:
+            pass
+        return None
+
+    async def _get_contacts(self, page: Page) -> Contacts:
+        """Извлечь контакты из карточки организации через itemprop-атрибуты Schema.org.
+
+        Яндекс.Карты размечает данные организации по Schema.org:
+        - itemprop='telephone' — телефон (span с текстом номера)
+        - itemprop='url'       — сайт
+        - itemprop='sameAs'    — ссылки на соцсети организации
+
+        К моменту вызова _click_show_phone уже дождался заполнения telephone.
+        """
+        try:
+            data: dict = await page.evaluate("""() => {
+                const BOOKING = ['yclients.com', 'dikidi.net'];
+                // Официальные аккаунты самого Яндекса — не контакты организации
+                const YANDEX_ACCOUNTS = ['mapsyandex', 'yandex.maps', 'yandex_maps'];
+
+                // Телефоны через itemprop='telephone'
+                const phones = [...new Set(
+                    [...document.querySelectorAll('[itemprop="telephone"]')]
+                        .map(el => el.textContent.trim())
+                        .filter(Boolean)
+                )];
+
+                // Сайт через itemprop='url', исключая сервисы записи
+                let website = null;
+                for (const el of document.querySelectorAll('[itemprop="url"]')) {
+                    const href = el.href || '';
+                    if (href && !BOOKING.some(b => href.includes(b))) {
+                        website = href;
+                        break;
+                    }
+                }
+
+                // Соцсети через itemprop='sameAs', исключая аккаунты самого Яндекса
+                let telegram = null, vk = null, whatsapp = null, instagram = null;
+                for (const el of document.querySelectorAll('[itemprop="sameAs"]')) {
+                    const href = el.href || '';
+                    if (!href) continue;
+                    if (YANDEX_ACCOUNTS.some(a => href.includes(a))) continue;
+                    if (!telegram && (href.includes('t.me/') || href.includes('telegram')))
+                        telegram = href;
+                    else if (!vk && href.includes('vk.com/'))
+                        vk = href;
+                    else if (!whatsapp && (href.includes('wa.me/') || href.includes('whatsapp')))
+                        whatsapp = href;
+                    else if (!instagram && href.includes('instagram'))
+                        instagram = href;
+                }
+
+                return { phones, website, telegram, vk, whatsapp, instagram };
+            }""")
+        except Exception as exc:
+            logger.debug("_get_contacts evaluate error: %s", exc)
+            data = {}
+
+        return Contacts(
+            phone=data.get("phones") or [],
+            website=data.get("website"),
+            telegram=data.get("telegram"),
+            vk=data.get("vk"),
+            whatsapp=data.get("whatsapp"),
+            instagram=data.get("instagram"),
+        )
+
+    async def _get_address(self, page: Page) -> str:
+        """Получить адрес, корректно разделив основную часть и доп. информацию.
+
+        Яндекс.Карты хранят адрес и подсказку (этаж, вход и т.п.) в разных
+        текстовых нодах одного контейнера. inner_text() сливает их без пробела:
+        «ул. Мустая Карима, 28, Уфавход с торца здания».
+
+        Метод разбирает ноды через JS и форматирует результат:
+        «ул. Мустая Карима, 28, Уфа (вход с торца здания)».
+        """
+        try:
+            el = page.locator(_SEL_ADDRESS).first
+            if not await el.is_visible(timeout=2000):
+                return ""
+
+            # Собираем отдельные текстовые ноды из DOM
+            parts: list[str] = await el.evaluate("""el => {
+                const texts = [];
+                const walk = (node) => {
+                    if (node.nodeType === 3) {
+                        const t = node.textContent.trim();
+                        if (t) texts.push(t);
+                    } else {
+                        for (const child of node.childNodes) walk(child);
+                    }
+                };
+                walk(el);
+                return texts;
+            }""")
+
+            if not parts:
+                return ""
+
+            main = parts[0].strip()
+            if len(parts) == 1:
+                return main
+
+            extra = ", ".join(p.strip() for p in parts[1:] if p.strip())
+            return f"{main} ({extra})" if extra else main
+
+        except Exception:
+            return (await self._text(page, _SEL_ADDRESS)) or ""
+
+    async def _scroll_to_contacts(self, page: Page) -> None:
+        """Прокрутить страницу к блоку телефонов.
+
+        Яндекс.Карты используют lazy-рендеринг: itemprop='telephone' появляется
+        в DOM только когда блок попадает во viewport.
+        """
+        try:
+            phone_block = page.locator(".card-phones-view").first
+            if await phone_block.count() > 0:
+                await phone_block.scroll_into_view_if_needed(timeout=3000)
+                await random_delay(0.8, 1.2)
+        except Exception:
+            pass
+
+    async def _click_show_phone(self, page: Page) -> None:
+        """Кликнуть на кнопку 'Показать телефон' если она есть.
+
+        Иногда номер сразу в DOM, иногда скрыт за кнопкой.
+        """
+        try:
+            btn = page.locator(_SEL_SHOW_PHONE_BTN).first
+            if await btn.is_visible(timeout=1500):
+                await btn.click()
+                await random_delay(0.5, 1.0)
+                logger.debug("Кликнули на кнопку показа телефона")
+        except Exception:
+            pass
 
     async def _parse_rating(self, page: Page, selector: str) -> float | None:
         """Извлечь число рейтинга из текста элемента."""

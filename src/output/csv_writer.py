@@ -11,6 +11,21 @@ from pydantic import BaseModel
 # Разделитель для multi-value полей
 _MULTI_SEP = "; "
 
+# Символы, с которых начинается формула в Google Sheets / Excel
+_FORMULA_CHARS = ("+", "-", "=", "@")
+
+
+def _escape_sheet(value: str) -> str:
+    """Экранировать значение, чтобы Google Sheets не интерпретировал его как формулу.
+
+    Значения, начинающиеся с +, -, =, @ оборачиваются апострофом.
+    Google Sheets при импорте CSV/TSV убирает ведущий апостроф и помечает
+    ячейку как текстовую.
+    """
+    if value.startswith(_FORMULA_CHARS):
+        return f"'{value}"
+    return value
+
 
 def _flatten(d: dict[str, Any], prefix: str = "", sep: str = "_") -> dict[str, str]:
     """Рекурсивно развернуть вложенные словари в плоскую структуру.
@@ -25,11 +40,11 @@ def _flatten(d: dict[str, Any], prefix: str = "", sep: str = "_") -> dict[str, s
         if isinstance(value, dict):
             result.update(_flatten(value, full_key, sep))
         elif isinstance(value, list):
-            result[full_key] = _MULTI_SEP.join(str(v) for v in value)
+            result[full_key] = _escape_sheet(_MULTI_SEP.join(str(v) for v in value))
         elif value is None:
             result[full_key] = ""
         else:
-            result[full_key] = str(value)
+            result[full_key] = _escape_sheet(str(value))
     return result
 
 
