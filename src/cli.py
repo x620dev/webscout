@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import csv
 import json
 import logging
 from pathlib import Path
@@ -200,6 +201,58 @@ def pipeline(
     )
     if failed:
         raise typer.Exit(1)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# convert — конвертация JSON в TSV
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@app.command()
+def convert_to_tsv(
+    input_file: str = typer.Argument(help="Имя JSON-файла (берётся из data/json/)"),
+    output: str = typer.Option(None, "--output", "-o", help="Имя выходного файла (сохраняется в data/csv/, по умолчанию то же имя с расширением .tsv)"),
+) -> None:
+    """Конвертировать JSON-файл из data/json/ в TSV-файл в data/csv/."""
+    from src.output.csv_writer import _flatten
+
+    # Определяем входной путь
+    stem = Path(input_file).stem
+    json_path = Path("data/json") / f"{stem}.json"
+    if not json_path.exists():
+        console.print(f"[red]Файл не найден:[/red] {json_path}")
+        raise typer.Exit(1)
+
+    # Читаем JSON
+    try:
+        data = json.loads(json_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        console.print(f"[red]Ошибка чтения JSON:[/red] {exc}")
+        raise typer.Exit(1)
+
+    if not isinstance(data, list):
+        console.print("[red]JSON-файл должен содержать массив объектов.[/red]")
+        raise typer.Exit(1)
+
+    if not data:
+        console.print("[yellow]Файл пуст, TSV не создан.[/yellow]")
+        return
+
+    # Определяем выходной путь
+    out_name = Path(output).stem + ".tsv" if output else f"{stem}.tsv"
+    out_path = Path("data/csv") / out_name
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Конвертируем и пишем TSV
+    rows = [_flatten(row) for row in data if isinstance(row, dict)]
+    fieldnames = list(rows[0].keys())
+
+    with open(out_path, "w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter="\t", extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(rows)
+
+    console.print(f"[green]Конвертировано {len(rows)} записей:[/green] {out_path}")
 
 
 if __name__ == "__main__":

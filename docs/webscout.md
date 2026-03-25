@@ -149,7 +149,9 @@ webscout legal enrich data/json/studios.json --source egrul
 # ─── Общие команды ───
 webscout render <url>                                      # рендеринг произвольной SPA
 webscout merge file1.json file2.json -o merged.json        # дедупликация и объединение
-webscout pipeline research.yaml                            # запуск цепочки (будущее)
+webscout pipeline research.yaml                            # запуск цепочки
+webscout convert-to-tsv ufa_studios.json                   # конвертация JSON → TSV
+webscout convert-to-tsv ufa_studios.json -o report.tsv     # с кастомным именем файла
 ```
 
 ### Общие параметры (доступны для всех команд)
@@ -544,6 +546,15 @@ webscout merge data/json/yandex_studios.json data/json/2gis_studios.json -o data
 
 Объединяет JSON-файлы из разных источников с дедупликацией. Дубли определяются по нечёткому матчингу названий + совпадению города/адреса. При конфликте данные мержатся: приоритет у записи с большим количеством заполненных полей.
 
+### Команда `convert-to-tsv` — конвертация JSON в TSV
+
+```bash
+webscout convert-to-tsv ufa_studios.json          # → data/csv/ufa_studios.tsv
+webscout convert-to-tsv ufa_studios -o report     # → data/csv/report.tsv
+```
+
+Читает JSON-массив из `data/json/` и сохраняет TSV-файл в `data/csv/`. Имя файла на входе можно указывать с расширением `.json` или без него. Если выходной файл уже существует — перезаписывается. Вложенные объекты разворачиваются в плоскую структуру (например, `contacts.phone` → столбец `contacts_phone`), списки объединяются через `; `.
+
 ---
 
 ## Конфигурация
@@ -749,7 +760,7 @@ output:
 - `prices` (fetch yclients/dikidi, collect)
 - `reviews` (scrape yandex/flamp, enrich)
 - `legal` (search egrul/rusprofile, enrich)
-- `merge`, `pipeline`, `render`
+- `merge`, `pipeline`, `render`, `convert-to-tsv`
 
 #### MCP-сервер — 6 инструментов
 `scrape_organizations`, `fetch_organization`, `search_vacancies`, `fetch_prices`, `scrape_reviews`, `search_legal`
