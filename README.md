@@ -50,6 +50,7 @@ webscout legal enrich data/json/результат.json --source egrul
 - [`legal`](#legalscout-legal) — юридические данные (ЕГРЮЛ, Rusprofile)
 - [`merge`](#merge) — объединение и дедупликация JSON-файлов
 - [`pipeline`](#pipeline) — автоматизация цепочки команд из YAML
+- [`convert-to-tsv`](#convert-to-tsv) — конвертация JSON-файла в TSV
 - [`render`](#render) — рендеринг произвольных SPA-страниц
 
 ---
@@ -528,6 +529,33 @@ webscout pipeline research.yaml --stop-on-error
 - Полный цикл исследования рынка одной командой
 - Повторяемые исследования (сохранить YAML, запускать периодически)
 - Автоматизация рутинных сценариев
+
+---
+
+## Convert-to-tsv
+
+Конвертирует готовый JSON-файл из `data/json/` в TSV-файл в `data/csv/`. Удобно для открытия результатов в Excel или Google Sheets.
+
+```bash
+webscout convert-to-tsv <имя_файла> [опции]
+```
+
+| Опция | Короткая | Описание | По умолчанию |
+|-------|----------|----------|--------------|
+| `--output` | `-o` | Имя выходного файла в `data/csv/` | То же имя, расширение `.tsv` |
+
+```bash
+# Конвертировать → data/csv/ufa_studios.tsv
+webscout convert-to-tsv ufa_studios.json
+
+# С расширением или без — одинаково
+webscout convert-to-tsv ufa_studios
+
+# С кастомным именем → data/csv/report.tsv
+webscout convert-to-tsv ufa_studios.json -o report
+```
+
+Вложенные объекты разворачиваются в плоскую структуру (`contacts_phone`, `geo_lat` и т.п.). Списки объединяются через `; `. Если файл уже существует — перезаписывается.
 
 ---
 
