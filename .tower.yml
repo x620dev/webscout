@@ -1,0 +1,13 @@
+# .tower.yml — метаданные проекта для Tower
+name: WebScout
+type: development
+status: active
+priority: normal
+stack: [python, playwright, typer, pydantic, httpx, asyncio]
+path: ~/Projects/AI/WebScout
+
+focus: "Версия 1 завершена — OrgScout (Яндекс.Карты, 2ГИС), JobScout, конвертация TSV"
+
+provides:
+  - "CLI-инструменты для исследования рынка через веб"
+  - "Скрапер организаций с Яндекс.Карт и 2ГИС"
