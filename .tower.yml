@@ -4,7 +4,7 @@ type: development
 status: active
 priority: normal
 stack: [python, playwright, typer, pydantic, httpx, asyncio]
-path: ~/Projects/AI/WebScout
+path: C:\Projects\AI\WebScout
 
 focus: "Версия 1 завершена — OrgScout (Яндекс.Карты, 2ГИС), JobScout, конвертация TSV"
 
